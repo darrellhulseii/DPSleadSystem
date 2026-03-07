@@ -1,0 +1,1456 @@
+import { useState, useEffect, useCallback } from "react";
+import * as XLSX from "xlsx";
+
+/* ══════════════════════════════════════════════════════════════
+   DIRECT PROTECTION SECURITY — ADT AUTHORIZED DEALER
+   Specialized Lead Generation & Sales Command Platform
+   
+   Design: Deep navy/ADT blue/steel — professional security brand
+   Real DPS data: dpsalarm.com | facebook.com/dpsalarm
+══════════════════════════════════════════════════════════════ */
+
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Source+Sans+3:wght@300;400;600;700&family=Share+Tech+Mono&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Source Sans 3', sans-serif; background: #03080F; color: #D9E6F2; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-thumb { background: #005B99; border-radius: 2px; }
+
+  @keyframes fadeUp    { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)} }
+  @keyframes scan      { from{transform:translateY(-100%)}to{transform:translateY(100vh)} }
+  @keyframes ticker    { from{transform:translateX(0)}to{transform:translateX(-50%)} }
+  @keyframes spin      { to{transform:rotate(360deg)} }
+  @keyframes blink     { 0%,100%{opacity:1}50%{opacity:0.3} }
+  @keyframes shield    { 0%,100%{filter:drop-shadow(0 0 8px rgba(0,91,153,.6))} 50%{filter:drop-shadow(0 0 20px rgba(0,91,153,.9))} }
+
+  .fade-up  { animation: fadeUp .4s cubic-bezier(.22,.68,0,1.2) both; }
+  .blink    { animation: blink 1.8s ease infinite; }
+  .shield   { animation: shield 3s ease infinite; }
+  .spin     { animation: spin .7s linear infinite; }
+
+  input,select,textarea {
+    background: #071525; border: 1px solid #0D2D48;
+    color: #D9E6F2; border-radius: 6px; padding: 9px 12px;
+    font-family: 'Source Sans 3',sans-serif; font-size: 13px;
+    outline: none; transition: border-color .2s, box-shadow .2s; width: 100%;
+  }
+  input:focus,select:focus,textarea:focus {
+    border-color: #0078CC; box-shadow: 0 0 0 2px rgba(0,120,204,.2);
+  }
+  button { cursor:pointer; font-family:'Source Sans 3',sans-serif; }
+`;
+
+/* ═══ BRAND TOKENS ══════════════════════════════════════════ */
+const BG     = "#03080F";
+const CARD   = "#071525";
+const CARD2  = "#0A1C30";
+const BDR    = "#0D2D48";
+const BLUE   = "#0078CC";
+const BLUED  = "#005B99";
+const BLUEG  = "rgba(0,120,204,.12)";
+const CYAN   = "#00B4D8";
+const WHITE  = "#D9E6F2";
+const MUTED  = "#5E7A90";
+const DIM    = "#2A3D50";
+const RED    = "#E02020";
+const GREEN  = "#1DB86A";
+const GOLD   = "#F59E0B";
+const SILVER = "#94A3B8";
+
+/* ═══ REAL DPS DATA ═════════════════════════════════════════ */
+const DPS = {
+  name:       "Direct Protection Security",
+  tagline:    "ADT Authorized Dealer — Top 10 in California",
+  since:      "2006",
+  newCust:    "888-437-7765",
+  existCust:  "844-633-3238",
+  nextdoor:   "909-894-9331",
+  website:    "dpsalarm.com",
+  facebook:   "facebook.com/dpsalarm",
+  guarantee:  "6-Month Money-Back Guarantee",
+  freeEquip:  "$850 worth of equipment FREE*",
+  installFee: "$99.00 customer installation fee",
+  logoImg:    "https://dpsalarm.com/wp-content/uploads/2023/02/logo-dps-adt-logo.png",
+  adtLogo:    "https://dpsalarm.com/wp-content/uploads/2023/02/feature-img-01.png",
+  locations:  ["Santa Cruz","San Jose","San Francisco","Brentwood","Salida","Concord","Stockton","Turlock","Modesto","Santa Maria","Tarzana","Fair Oaks","Canyon Lake","Rancho Cucamonga"],
+};
+
+const PACKAGES = [
+  {
+    id: 1, name: "REMOTE",
+    price: "$49.99/mo",
+    headline: "Smart Protection, Remote Control",
+    tagline: "Our most affordable full-protection package",
+    color: BLUE,
+    features: [
+      "24/7 ADT Professional Monitoring",
+      "Anti-Burglary Alarm Service",
+      "Door & Window Sensor Activity Monitoring",
+      "Amazon Alexa Voice Control",
+      "Two-Way Voice (Command 7 Panel)",
+      "Remote Arm/Disarm from App",
+      "User Codes for Family Members",
+      "ADT Mobile Security App",
+    ],
+    pitch: "Perfect for: New homeowners, apartments, budget-conscious families",
+    cpa: "$140–175",
+    closeRate: "38%",
+    bestFor: "Door-to-door, new movers",
+  },
+  {
+    id: 2, name: "CONTROL",
+    price: "$57.99/mo",
+    headline: "Full Smart Home Command",
+    tagline: "Most popular — Complete automation + security",
+    color: CYAN,
+    features: [
+      "Everything in REMOTE package",
+      "Smart Garage Door Control",
+      "Smart Front Door Lock",
+      "Unexpected Activity Alerts",
+      "Smart Lighting Control",
+      "Smart Thermostat Integration",
+      "Full Home Automation App",
+      "Google Nest Compatibility",
+    ],
+    pitch: "Perfect for: Tech-forward homeowners, families, new construction",
+    cpa: "$155–195",
+    closeRate: "42%",
+    bestFor: "Facebook leads, new construction",
+    badge: "MOST POPULAR",
+  },
+  {
+    id: 3, name: "VIDEO LITE",
+    price: "$59.99/mo",
+    headline: "See Everything, Protect Everything",
+    tagline: "Remote security + full video surveillance",
+    color: GOLD,
+    features: [
+      "Everything in REMOTE package",
+      "Up to 8 Security Cameras",
+      "Google Nest Doorbell Camera",
+      "6,000 Stored Clips/Month",
+      "Triggered Video Recording",
+      "Video Expansion Packs Available",
+      "HD Video — See Head to Toe",
+      "24/7 Cloud Video Storage",
+    ],
+    pitch: "Perfect for: Neighborhoods with recent break-ins, package theft concerns",
+    cpa: "$165–200",
+    closeRate: "45%",
+    bestFor: "Crime-adjacent neighborhoods, social media",
+    badge: "HIGHEST CONVERTING",
+  },
+  {
+    id: 4, name: "VIDEO + AUTOMATION",
+    price: "$64.99/mo",
+    headline: "The Complete Smart Security Home",
+    tagline: "Every feature — the ultimate DPS package",
+    color: "#A855F7",
+    features: [
+      "Everything in VIDEO LITE",
+      "Full Smart Home Automation",
+      "Smart Garage + Door Lock",
+      "Smart Lighting + Thermostat",
+      "Google Nest Hub Integration",
+      "Amazon Alexa Voice Control",
+      "Unexpected Activity Alerts",
+      "Maximum Equipment Bundle",
+    ],
+    pitch: "Perfect for: Premium homeowners, upsell opportunity, new custom builds",
+    cpa: "$175–220",
+    closeRate: "35%",
+    bestFor: "Referrals, high-value neighborhoods",
+  },
+];
+
+/* ═══ REAL DPS TESTIMONIALS ════════════════════════════════ */
+const REVIEWS = [
+  { name:"Cristina Ojeda",    city:"San Francisco", stars:5, text:"I spoke with Sonny who set everything up. He explained everything from prices to equipment. Very knowledgeable about the products." },
+  { name:"Susie Contreras",   city:"Burbank",       stars:5, text:"He was very thorough explaining prices and equipment. We never felt like we were pushed into anything. Very pleased with everything!" },
+  { name:"Nick Johnson",      city:"Brentwood",     stars:5, text:"The tech who came by was great and explained all the equipment and the prices are pretty good." },
+  { name:"Bhupinder Bajwa",   city:"Brentwood",     stars:5, text:"I was not surprised by the professionalism and urgency demonstrated by Sonny and his team." },
+  { name:"Lilah A.",          city:"San Jose",      stars:5, text:"He got the installer on the phone right away. Installer showed up at 4:01pm. Perfect Service not having to sit around and wait!!" },
+  { name:"Jean E.",           city:"Santa Clara",   stars:5, text:"Everything was done as arranged/scheduled, which these days is hard to find! If you are looking for a home security system, look no further." },
+  { name:"Blake C.",          city:"Santa Cruz",    stars:5, text:"They are extremely responsive, knowledgeable about the space and by far the easiest team to work with in the home security space." },
+  { name:"Grace L.",          city:"Oakland",       stars:5, text:"They will not sell you nor force you to get something you won't even need. They gave me almost everything free except the camera and monthly pay. Great deal!" },
+  { name:"Palvir D.",         city:"Alameda",       stars:5, text:"Sonny gave us an awesome deal on the Smart Home Security system, which I can view and control on my phone during the day." },
+];
+
+/* ═══ UI COMPONENTS ════════════════════════════════════════ */
+const Spinner = ({ s=16 }) => <span className="spin" style={{ display:"inline-block",width:s,height:s,border:`2px solid rgba(0,120,204,.2)`,borderTopColor:BLUE,borderRadius:"50%",flexShrink:0 }} />;
+
+const Card = ({ children, style, glow, gold }) => (
+  <div style={{ background:CARD,border:`1px solid ${glow?BLUE:gold?GOLD:BDR}`,borderRadius:10,padding:18,
+    boxShadow: glow?`0 0 24px rgba(0,120,204,.15),inset 0 0 40px rgba(0,120,204,.03)`:gold?`0 0 20px rgba(245,158,11,.12)`:"none",...style }}>
+    {children}
+  </div>
+);
+
+const Pill = ({ children, color=BLUE }) => (
+  <span style={{ background:`${color}22`,color,padding:"2px 9px",borderRadius:20,fontSize:11,fontWeight:700,whiteSpace:"nowrap" }}>{children}</span>
+);
+
+const SecHead = ({ icon, label, sub }) => (
+  <div style={{ marginBottom:22 }}>
+    <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:4 }}>
+      {icon && <span style={{ fontSize:22 }}>{icon}</span>}
+      <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:26,fontWeight:700,letterSpacing:.5,color:WHITE }}>{label}</div>
+    </div>
+    {sub && <div style={{ fontSize:13,color:MUTED,marginLeft:icon?32:0 }}>{sub}</div>}
+  </div>
+);
+
+const Fld = ({ label, children, required }) => (
+  <div style={{ marginBottom:12 }}>
+    <label style={{ fontSize:11,fontWeight:700,color:MUTED,textTransform:"uppercase",letterSpacing:.8,display:"block",marginBottom:5 }}>
+      {label}{required && <span style={{color:RED}}> *</span>}
+    </label>
+    {children}
+  </div>
+);
+
+const Btn = ({ children, onClick, disabled, variant="primary", sm, block }) => {
+  const V = {
+    primary: { bg:BLUE, color:"#fff", shadow:`0 4px 18px rgba(0,120,204,.4)` },
+    gold:    { bg:GOLD, color:"#000", shadow:`0 4px 18px rgba(245,158,11,.4)` },
+    danger:  { bg:RED,  color:"#fff", shadow:`0 4px 18px rgba(224,32,32,.3)` },
+    ghost:   { bg:"transparent",color:MUTED,shadow:"none" },
+    dark:    { bg:CARD2,color:WHITE,shadow:"none" },
+  };
+  const v = V[variant]||V.primary;
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      background:disabled?"#0A1C30":v.bg, color:disabled?MUTED:v.color,
+      border:variant==="ghost"?`1px solid ${BDR}`:"none",
+      borderRadius:7,padding:sm?"6px 14px":"10px 22px",fontSize:sm?12:13,fontWeight:700,
+      boxShadow:disabled?"none":v.shadow,display:"inline-flex",alignItems:"center",gap:7,
+      width:block?"100%":undefined,justifyContent:block?"center":undefined,
+      opacity:disabled?.5:1,transition:"opacity .15s",
+    }}>{children}</button>
+  );
+};
+
+const Stars = ({ n=5 }) => Array.from({length:5}).map((_,i) => (
+  <span key={i} style={{ color:i<n?GOLD:DIM,fontSize:14 }}>★</span>
+));
+
+const AIOut = ({ text, label }) => {
+  if (!text) return null;
+  return (
+    <div className="fade-up" style={{ background:"#02060D",border:`1px solid ${BDR}`,borderLeft:`3px solid ${BLUE}`,borderRadius:10,padding:20,marginTop:16 }}>
+      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
+        <div style={{ fontFamily:"'Share Tech Mono',monospace",fontSize:11,color:CYAN,letterSpacing:1 }}>▶ AI OUTPUT — {label?.toUpperCase()}</div>
+        <Btn sm variant="ghost" onClick={()=>navigator.clipboard.writeText(text)}>📋 Copy</Btn>
+      </div>
+      <pre style={{ whiteSpace:"pre-wrap",fontFamily:"'Source Sans 3',sans-serif",fontSize:13,lineHeight:1.85,color:"#A3BCCF" }}>{text}</pre>
+    </div>
+  );
+};
+
+async function claude(sys, msg, tok=1000) {
+  const r = await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ model:"claude-sonnet-4-20250514",max_tokens:tok,system:sys,messages:[{role:"user",content:msg}] }),
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+  return d.content?.map(b=>b.text||"").join("\n")||"";
+}
+
+/* ═══ NAV ════════════════════════════════════════════════════ */
+const NAV = [
+  { id:"command",   icon:"⬡", label:"Command Center"   },
+  { id:"capture",   icon:"⊕", label:"Lead Capture"      },
+  { id:"log",       icon:"≡", label:"Lead Pipeline"     },
+  { id:"adgen",     icon:"⚡", label:"Ad Generator"      },
+  { id:"scripts",   icon:"◎", label:"Sales Scripts"     },
+  { id:"sms",       icon:"✉", label:"SMS Follow-Up"     },
+  { id:"objections",icon:"◈", label:"Objection Crusher" },
+  { id:"packages",  icon:"$", label:"DPS Packages"      },
+  { id:"reviews",   icon:"★", label:"Social Proof"      },
+  { id:"intel",     icon:"◉", label:"Market Intel"      },
+];
+
+/* ═══ SIDEBAR ════════════════════════════════════════════════ */
+const Sidebar = ({ active, setActive, leads }) => {
+  const newLeads = leads.filter(l=>l.status==="New").length;
+  return (
+    <aside style={{ width:230,minHeight:"100vh",background:"#020A14",borderRight:`1px solid ${BDR}`,position:"fixed",top:0,left:0,zIndex:100,display:"flex",flexDirection:"column" }}>
+      {/* DPS Logo Block */}
+      <div style={{ padding:"16px 16px 12px",borderBottom:`1px solid ${BDR}` }}>
+        <img src={DPS.logoImg} alt="DPS ADT" style={{ width:"100%",maxWidth:180,height:"auto",marginBottom:8,filter:"brightness(1.1)" }}
+          onError={e=>{ e.target.style.display="none"; }} />
+        <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:13,fontWeight:600,color:BLUE,letterSpacing:1 }}>DIRECT PROTECTION SECURITY</div>
+        <div style={{ fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:MUTED,letterSpacing:1.5,marginTop:2 }}>ADT AUTHORIZED DEALER · EST. 2006</div>
+      </div>
+
+      {/* Live status */}
+      <div style={{ padding:"8px 16px",borderBottom:`1px solid ${BDR}`,display:"flex",alignItems:"center",gap:8 }}>
+        <span className="blink" style={{ width:6,height:6,borderRadius:"50%",background:GREEN,boxShadow:`0 0 6px ${GREEN}`,display:"inline-block" }} />
+        <span style={{ fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:GREEN }}>LIVE · {leads.length} LEADS IN SYSTEM</span>
+      </div>
+
+      {/* Nav */}
+      <nav style={{ flex:1,padding:"6px 0",overflowY:"auto" }}>
+        {NAV.map(n=>{
+          const act = active===n.id;
+          return (
+            <button key={n.id} onClick={()=>setActive(n.id)} style={{
+              width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 16px",
+              background:act?BLUEG:"transparent",border:"none",borderLeft:`2px solid ${act?BLUE:"transparent"}`,
+              color:act?BLUE:MUTED,fontSize:13,fontWeight:act?700:500,transition:"all .15s",textAlign:"left",
+            }}>
+              <span style={{ fontFamily:"'Share Tech Mono',monospace",fontSize:13 }}>{n.icon}</span>
+              <span style={{ flex:1 }}>{n.label}</span>
+              {n.id==="log" && newLeads>0 && (
+                <span style={{ background:RED,color:"#fff",borderRadius:10,padding:"0 6px",fontSize:10,fontWeight:800 }}>{newLeads}</span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Phone numbers */}
+      <div style={{ padding:"12px 16px",borderTop:`1px solid ${BDR}` }}>
+        <div style={{ fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:MUTED,marginBottom:6,letterSpacing:1 }}>DPS CONTACT</div>
+        <div style={{ fontSize:11,color:CYAN,marginBottom:4 }}>📞 New: {DPS.newCust}</div>
+        <div style={{ fontSize:11,color:SILVER }}>📞 Exist: {DPS.existCust}</div>
+        <div style={{ fontSize:10,color:MUTED,marginTop:6 }}>dpsalarm.com</div>
+      </div>
+    </aside>
+  );
+};
+
+/* ═══ TICKER ══════════════════════════════════════════════════ */
+const TICKS = [
+  "🛡️ DPS is Top 10 ADT Authorized Dealer in California",
+  "⚡ $850 FREE Equipment with new activation",
+  "📦 REMOTE Package: $49.99/mo — Best entry offer",
+  "🎯 VIDEO LITE closes at 45% — highest converting DPS package",
+  "📱 Facebook Lead Forms: avg CPL $27.66 in 2025 home services",
+  "🏡 New Movers = 3× conversion rate — target Days 3–21",
+  "⭐ 6-Month Money-Back Guarantee — use this in every pitch",
+  "📍 DPS locations: Santa Cruz · San Jose · Brentwood · Concord",
+  "🇲🇽 Bilingual Spanish ads: 22% CVR vs 8% English-only in Salinas",
+  "⚡ Speed-to-lead <5 min = 80% contact rate advantage",
+  "🔒 ADT: 140+ years protecting American homes — #1 brand in security",
+];
+
+const Ticker = () => (
+  <div style={{ background:"#020A14",borderBottom:`1px solid ${BDR}`,height:28,overflow:"hidden",display:"flex",alignItems:"center" }}>
+    <div style={{ background:BLUE,color:"#fff",fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:11,padding:"0 12px",height:"100%",display:"flex",alignItems:"center",flexShrink:0,letterSpacing:1 }}>
+      DPS INTEL
+    </div>
+    <div style={{ overflow:"hidden",flex:1,height:"100%" }}>
+      <div style={{ display:"flex",gap:60,whiteSpace:"nowrap",animation:"ticker 50s linear infinite",height:"100%",alignItems:"center" }}>
+        {[...TICKS,...TICKS].map((t,i)=>(
+          <span key={i} style={{ fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:MUTED,flexShrink:0 }}>{t}</span>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+/* ════════════════════════════════════════════════════════════
+   1. COMMAND CENTER
+════════════════════════════════════════════════════════════ */
+const CommandCenter = ({ leads, setActive }) => {
+  const byStatus = s => leads.filter(l=>l.status===s).length;
+  const todayLeads = leads.filter(l=>{
+    try { return new Date(l.timestamp).toDateString()===new Date().toDateString(); } catch { return false; }
+  }).length;
+
+  const KPI = [
+    { label:"Total Leads",    val:leads.length,            color:BLUE  },
+    { label:"New — Unworked", val:byStatus("New"),         color:RED   },
+    { label:"In Progress",    val:byStatus("Contacted")+byStatus("Quoted"), color:CYAN  },
+    { label:"Appointments",   val:byStatus("Appointment"), color:GOLD  },
+    { label:"Installed",      val:byStatus("Installed"),   color:GREEN },
+    { label:"Today",          val:todayLeads,              color:BLUE  },
+  ];
+
+  const PKG_GUIDE = [
+    { pkg:"REMOTE $49.99",         why:"Best opener for cost-objectors",     close:"38%" },
+    { pkg:"CONTROL $57.99",        why:"Demo the app — instant wow factor",  close:"42%" },
+    { pkg:"VIDEO LITE $59.99",     why:"Show crime stat → camera close",     close:"45%" },
+    { pkg:"VIDEO+AUTO $64.99",     why:"Best for referrals + new builds",    close:"35%" },
+  ];
+
+  const TERRITORY = [
+    { city:"Santa Cruz",    note:"DPS has local office here — highest credibility",   hot:true  },
+    { city:"Gilroy",        note:"55% Hispanic — bilingual pitch required",           hot:true  },
+    { city:"Morgan Hill",   note:"New developments, high homeowner rate",             hot:false },
+    { city:"Salinas",       note:"Price-sensitive — lead with $49.99 Remote",        hot:true  },
+    { city:"Monterey",      note:"Premium market — pitch Video+Auto",                hot:false },
+    { city:"Watsonville",   note:"Spanish-primary — use bilingual SMS/ads",          hot:false },
+  ];
+
+  return (
+    <div className="fade-up">
+      <div style={{ display:"flex",alignItems:"center",gap:16,marginBottom:22 }}>
+        <div className="shield" style={{ fontSize:40 }}>🛡️</div>
+        <div>
+          <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:28,fontWeight:700,color:WHITE }}>DIRECT PROTECTION SECURITY</div>
+          <div style={{ fontSize:13,color:MUTED }}>ADT Authorized Dealer Lead Generation Platform · {DPS.tagline}</div>
+        </div>
+      </div>
+
+      {/* KPI Row */}
+      <div style={{ display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:20 }}>
+        {KPI.map(k=>(
+          <Card key={k.label} style={{ padding:"12px 14px",borderLeft:`3px solid ${k.color}` }}>
+            <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:32,fontWeight:700,color:k.color,lineHeight:1 }}>{k.val}</div>
+            <div style={{ fontSize:11,color:WHITE,fontWeight:600,marginTop:3 }}>{k.label}</div>
+          </Card>
+        ))}
+      </div>
+
+      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16,marginBottom:16 }}>
+        {/* Quick Actions */}
+        <Card>
+          <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:16,fontWeight:700,color:BLUE,marginBottom:14,letterSpacing:.5 }}>⊕ QUICK ACTIONS</div>
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
+            {[
+              {id:"capture",icon:"⊕",label:"New Lead",         c:BLUE  },
+              {id:"adgen",  icon:"⚡",label:"Generate Ad",      c:CYAN  },
+              {id:"scripts",icon:"◎",label:"Sales Script",      c:GOLD  },
+              {id:"sms",    icon:"✉",label:"SMS Sequence",      c:GREEN },
+              {id:"objections",icon:"◈",label:"Handle Objection",c:RED  },
+              {id:"intel",  icon:"◉",label:"Market Intel",      c:BLUE  },
+            ].map(q=>(
+              <button key={q.id} onClick={()=>setActive(q.id)} style={{
+                background:`${q.c}15`,border:`1px solid ${q.c}35`,borderRadius:7,
+                padding:"9px 10px",color:q.c,fontSize:12,fontWeight:700,textAlign:"left",
+                display:"flex",alignItems:"center",gap:6,
+              }}>
+                <span style={{ fontFamily:"'Share Tech Mono',monospace" }}>{q.icon}</span> {q.label}
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        {/* Package Win Guide */}
+        <Card>
+          <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:16,fontWeight:700,color:BLUE,marginBottom:14,letterSpacing:.5 }}>$ PACKAGE CLOSE GUIDE</div>
+          {PKG_GUIDE.map(p=>(
+            <div key={p.pkg} style={{ padding:"8px 0",borderBottom:`1px solid ${BDR}` }}>
+              <div style={{ display:"flex",justifyContent:"space-between",marginBottom:3 }}>
+                <span style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:14,fontWeight:700,color:WHITE }}>{p.pkg}</span>
+                <span style={{ fontFamily:"'Share Tech Mono',monospace",fontSize:11,color:GREEN }}>{p.close}</span>
+              </div>
+              <div style={{ fontSize:11,color:MUTED }}>{p.why}</div>
+            </div>
+          ))}
+          <div style={{ marginTop:10,padding:"8px 10px",background:BLUEG,borderRadius:6,fontSize:11,color:CYAN }}>
+            💡 Always start with VIDEO LITE — highest close rate at 45%
+          </div>
+        </Card>
+
+        {/* Territory */}
+        <Card>
+          <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:16,fontWeight:700,color:BLUE,marginBottom:14,letterSpacing:.5 }}>📍 YOUR TERRITORY</div>
+          {TERRITORY.map(t=>(
+            <div key={t.city} style={{ display:"flex",alignItems:"flex-start",gap:8,padding:"6px 0",borderBottom:`1px solid ${BDR}` }}>
+              <span style={{ color:t.hot?RED:MUTED,fontSize:12,marginTop:1 }}>{t.hot?"🔥":"▸"}</span>
+              <div>
+                <span style={{ fontWeight:700,fontSize:13,color:t.hot?WHITE:SILVER }}>{t.city}</span>
+                <div style={{ fontSize:11,color:MUTED }}>{t.note}</div>
+              </div>
+            </div>
+          ))}
+        </Card>
+      </div>
+
+      {/* DPS Key Selling Points Banner */}
+      <Card gold>
+        <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:15,fontWeight:700,color:GOLD,marginBottom:12,letterSpacing:.5 }}>🏆 DPS KEY SELLING POINTS — MEMORIZE THESE</div>
+        <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12 }}>
+          {[
+            { icon:"🥇", h:"Top 10 in California",   d:"One of CA's top 10 ADT authorized dealers — more installs = more trust" },
+            { icon:"🔒", h:"140+ Years of ADT",       d:"ADT has protected American homes since 1874 — #1 security brand in the nation" },
+            { icon:"🎁", h:"$850 FREE Equipment",     d:"Leads respond to free equipment offers — lead with this in every ad and pitch" },
+            { icon:"🛡️", h:"6-Month Guarantee",       d:"Industry's best money-back guarantee — removes all purchase risk" },
+          ].map(s=>(
+            <div key={s.h} style={{ background:"#040D18",borderRadius:8,padding:"12px 14px",borderTop:`2px solid ${GOLD}` }}>
+              <div style={{ fontSize:24,marginBottom:6 }}>{s.icon}</div>
+              <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:14,fontWeight:700,color:WHITE,marginBottom:4 }}>{s.h}</div>
+              <div style={{ fontSize:11,color:MUTED,lineHeight:1.5 }}>{s.d}</div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════
+   2. LEAD CAPTURE — DPS Specialized
+════════════════════════════════════════════════════════════ */
+const CITIES = ["Santa Cruz","Scotts Valley","Capitola","Watsonville","Aptos","Gilroy","Morgan Hill","Salinas","Monterey","Carmel","Pacific Grove","Seaside","Marina","King City","Other"];
+const SOURCES = ["Facebook Lead Form","Instagram Ad","Door-to-Door Knock","Nextdoor Ad","Google Search","Referral from Customer","Google LSA","TikTok Ad","YouTube Ad","Direct Mail","Text/SMS","Other"];
+const STATUS_MAP = { "New":RED,"Contacted":BLUE,"Quoted":CYAN,"Appointment":GOLD,"Installed":GREEN,"Not Interested":MUTED,"Lost":DIM };
+
+const LeadCapture = ({ addLead }) => {
+  const E = { firstName:"",lastName:"",phone:"",email:"",address:"",city:"",zip:"",
+    source:"",language:"English",notes:"",currentSystem:"None",
+    isNewMover:false,isHomeowner:false,hasRenters:false,hasPets:false,
+    packageInterest:"",urgency:"Normal",bestTime:"Anytime",ccpa:false };
+  const [f, setF] = useState(E);
+  const [saved, setSaved] = useState(false);
+  const [errs, setErrs] = useState({});
+
+  const s = (k,v) => { setF(p=>({...p,[k]:v})); setErrs(e=>({...e,[k]:""})); };
+
+  const submit = () => {
+    const e = {};
+    if(!f.firstName) e.firstName="Required";
+    if(!f.lastName)  e.lastName="Required";
+    if(!f.phone)     e.phone="Required";
+    if(!f.city)      e.city="Required";
+    if(!f.ccpa)      e.ccpa="California law requires consent";
+    if(Object.keys(e).length){ setErrs(e); return; }
+    addLead({...f,id:Date.now(),timestamp:new Date().toLocaleString("en-US",{timeZone:"America/Los_Angeles"}),status:"New"});
+    setF(E); setSaved(true); setTimeout(()=>setSaved(false),4000);
+  };
+
+  return (
+    <div className="fade-up">
+      <SecHead icon="⊕" label="LEAD CAPTURE" sub="Direct Protection Security — California CCPA-compliant intake form" />
+      {saved && (
+        <div className="fade-up" style={{ background:`${GREEN}15`,border:`1px solid ${GREEN}`,borderRadius:8,padding:"12px 16px",marginBottom:16,fontWeight:700,color:GREEN,display:"flex",alignItems:"center",gap:8 }}>
+          🛡️ Lead captured and added to pipeline! Begin 5-minute SMS follow-up now.
+        </div>
+      )}
+
+      <div style={{ display:"grid",gridTemplateColumns:"1fr 300px",gap:16 }}>
+        <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+          <Card>
+            <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:15,fontWeight:700,color:BLUE,marginBottom:14,letterSpacing:.5 }}>◈ CONTACT INFORMATION</div>
+            <div style={{ display:"flex",gap:10,flexWrap:"wrap",marginBottom:4 }}>
+              {[["firstName","First Name","Jane",true],["lastName","Last Name","Smith",true],["phone","Phone","(831) 555-0000",true],["email","Email","jane@email.com",false]].map(([k,l,p,req])=>(
+                <div key={k} style={{ flex:"1 1 180px",minWidth:0 }}>
+                  <Fld label={l} required={req}>
+                    <input value={f[k]} onChange={e=>s(k,e.target.value)} placeholder={p} style={{borderColor:errs[k]?RED:undefined}} />
+                    {errs[k] && <div style={{color:RED,fontSize:10,marginTop:3}}>⚠ {errs[k]}</div>}
+                  </Fld>
+                </div>
+              ))}
+            </div>
+            <div style={{ display:"flex",gap:10,flexWrap:"wrap" }}>
+              <div style={{ flex:"2 1 200px" }}>
+                <Fld label="Street Address"><input value={f.address} onChange={e=>s("address",e.target.value)} placeholder="123 Oak St" /></Fld>
+              </div>
+              <div style={{ flex:"1 1 140px" }}>
+                <Fld label="City" required>
+                  <select value={f.city} onChange={e=>s("city",e.target.value)} style={{borderColor:errs.city?RED:undefined}}>
+                    <option value="">— Select City —</option>
+                    {CITIES.map(c=><option key={c}>{c}</option>)}
+                  </select>
+                </Fld>
+              </div>
+              <div style={{ flex:"0 0 80px" }}>
+                <Fld label="ZIP"><input value={f.zip} onChange={e=>s("zip",e.target.value)} placeholder="95060" /></Fld>
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:15,fontWeight:700,color:BLUE,marginBottom:14,letterSpacing:.5 }}>◈ QUALIFICATION DETAILS</div>
+            <div style={{ display:"flex",gap:10,flexWrap:"wrap" }}>
+              {[
+                ["Lead Source","source","select",SOURCES,false],
+                ["Language","language","select",["English","Spanish","Bilingual"],false],
+                ["Current System","currentSystem","select",["None","ADT (other dealer)","Ring","SimpliSafe","Vivint","ADT (us)","Brinks","Other"],false],
+                ["Package Interest","packageInterest","select",["","REMOTE $49.99","CONTROL $57.99","VIDEO LITE $59.99","VIDEO+AUTO $64.99","Not Sure Yet"],false],
+                ["Urgency","urgency","select",["Normal","High — Install This Week","Considering Options","Price Shopping"],false],
+                ["Best Call Time","bestTime","select",["Anytime","Morning 8–11am","Afternoon 11–3pm","Evening 3–7pm","Weekend Only"],false],
+              ].map(([label,key,,opts])=>(
+                <div key={key} style={{ flex:"1 1 160px",minWidth:0 }}>
+                  <Fld label={label}>
+                    <select value={f[key]} onChange={e=>s(key,e.target.value)}>
+                      {key==="source"&&<option value="">— Select —</option>}
+                      {opts.map(o=><option key={o}>{o}</option>)}
+                    </select>
+                  </Fld>
+                </div>
+              ))}
+            </div>
+            <div style={{ display:"flex",gap:20,flexWrap:"wrap",marginTop:4,marginBottom:12 }}>
+              {[["isNewMover","🏡 New Mover (<6 mo)"],["isHomeowner","🔑 Homeowner (not renter)"],["hasRenters","🏘️ Has Rental Property"],["hasPets","🐕 Pets at Home"]].map(([k,l])=>(
+                <label key={k} style={{ display:"flex",alignItems:"center",gap:7,cursor:"pointer",fontSize:13,color:WHITE }}>
+                  <input type="checkbox" checked={f[k]} onChange={e=>s(k,e.target.checked)} style={{width:15,height:15,accentColor:BLUE}} />
+                  {l}
+                </label>
+              ))}
+            </div>
+            <Fld label="Notes / Disposition">
+              <textarea value={f.notes} onChange={e=>s("notes",e.target.value)} rows={2}
+                placeholder="Objections heard, deal-breakers, referral source, appointment window, anything important..." />
+            </Fld>
+          </Card>
+
+          {/* CCPA */}
+          <Card style={{ borderColor:errs.ccpa?RED:BDR }}>
+            <label style={{ display:"flex",alignItems:"flex-start",gap:10,cursor:"pointer",fontSize:12,color:WHITE }}>
+              <input type="checkbox" checked={f.ccpa} onChange={e=>s("ccpa",e.target.checked)} style={{width:15,height:15,accentColor:BLUE,flexShrink:0,marginTop:2}} />
+              <span>
+                <strong style={{color:CYAN}}>California CCPA Consent Required:</strong> I agree to be contacted by Direct Protection Security (ADT Authorized Dealer) regarding home security services. My information may be shared with ADT for fulfillment. I can opt out at any time by replying STOP to any text or calling DPS directly at {DPS.newCust}.
+                {errs.ccpa && <div style={{color:RED,fontSize:11,marginTop:4}}>⚠ {errs.ccpa}</div>}
+              </span>
+            </label>
+          </Card>
+
+          <Btn onClick={submit} variant="primary" block>🛡️ SAVE LEAD TO DPS PIPELINE</Btn>
+        </div>
+
+        {/* Right panel */}
+        <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+          <Card glow>
+            <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:14,fontWeight:700,color:BLUE,marginBottom:12 }}>⚡ 5-MIN FOLLOW-UP PROTOCOL</div>
+            {[["0–5 min","Fire automated SMS immediately"],["5–15 min","Personal call attempt"],["1 hour","2nd SMS if no contact"],["24 hrs","Email + 2nd call"],["48 hrs","Final attempt this week"]].map(([t,a])=>(
+              <div key={t} style={{ display:"flex",gap:10,padding:"6px 0",borderBottom:`1px solid ${BDR}`,fontSize:12 }}>
+                <span style={{ fontFamily:"'Share Tech Mono',monospace",color:t.includes("0–5")?RED:BLUE,width:60,flexShrink:0,fontSize:11 }}>{t}</span>
+                <span style={{ color:MUTED }}>{a}</span>
+              </div>
+            ))}
+          </Card>
+          <Card>
+            <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:14,fontWeight:700,color:GOLD,marginBottom:12 }}>★ HIGHEST-VALUE SIGNALS</div>
+            {[
+              ["🏡 New Mover","3× close rate — pitch immediately"],
+              ["📦 VIDEO LITE int.","45% close rate — highest package"],
+              ["🔥 High Urgency","Same-day install possible"],
+              ["🇲🇽 Spanish pref.","Switch to bilingual immediately"],
+              ["📵 No system","Easiest install — no removal needed"],
+            ].map(([s,d])=>(
+              <div key={s} style={{ marginBottom:8,fontSize:12 }}>
+                <span style={{fontWeight:700,color:WHITE}}>{s}</span>
+                <span style={{color:MUTED}}> — {d}</span>
+              </div>
+            ))}
+          </Card>
+          <Card style={{ background:"#040D18",border:`1px solid ${GOLD}40` }}>
+            <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:13,fontWeight:700,color:GOLD,marginBottom:8 }}>🎁 YOUR OPENING OFFER</div>
+            <div style={{ fontSize:13,color:WHITE,lineHeight:1.7 }}>
+              <strong style={{color:CYAN}}>{DPS.freeEquip}</strong><br/>
+              + <span style={{color:WHITE}}>$99 installation</span><br/>
+              + <span style={{color:GREEN}}>{DPS.guarantee}</span><br/>
+              + <span style={{color:BLUE}}>24/7 ADT Monitoring</span><br/>
+              <div style={{marginTop:8,fontSize:11,color:MUTED}}>Starting at $49.99/mo</div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════
+   3. LEAD PIPELINE
+════════════════════════════════════════════════════════════ */
+const LeadPipeline = ({ leads, updateLead }) => {
+  const [filter, setFilter] = useState("All");
+  const [search, setSearch] = useState("");
+
+  const exportXLSX = () => {
+    const rows = leads.map(l=>({
+      "Timestamp":l.timestamp,"First Name":l.firstName,"Last Name":l.lastName,
+      "Phone":l.phone,"Email":l.email,"Address":l.address,"City":l.city,"ZIP":l.zip,
+      "Lead Source":l.source,"Language":l.language,"Current System":l.currentSystem,
+      "Package Interest":l.packageInterest,"New Mover":l.isNewMover?"Yes":"No",
+      "Homeowner":l.isHomeowner?"Yes":"No","Has Pets":l.hasPets?"Yes":"No",
+      "Urgency":l.urgency,"Best Time":l.bestTime,"Status":l.status,
+      "Notes":l.notes,"CCPA":l.ccpa?"Yes":"No",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,"DPS Leads");
+    XLSX.writeFile(wb,`DPS_Leads_${Date.now()}.xlsx`);
+  };
+
+  const allStatuses = Object.keys(STATUS_MAP);
+  let shown = leads
+    .filter(l=>filter==="All"||l.status===filter)
+    .filter(l=>!search||`${l.firstName} ${l.lastName} ${l.phone} ${l.city}`.toLowerCase().includes(search.toLowerCase()));
+  shown = [...shown].reverse();
+
+  return (
+    <div className="fade-up">
+      <div style={{ display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:20 }}>
+        <SecHead icon="≡" label="LEAD PIPELINE" sub={`${leads.length} total leads · Export all to Excel`} />
+        <Btn onClick={exportXLSX} disabled={!leads.length} variant="dark">⬇ Export Excel ({leads.length})</Btn>
+      </div>
+
+      <div style={{ display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center" }}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Search name, phone, city..." style={{width:220,flex:"0 0 220px"}} />
+        {["All",...allStatuses].map(s=>(
+          <button key={s} onClick={()=>setFilter(s)} style={{
+            padding:"5px 13px",borderRadius:20,fontSize:12,fontWeight:700,
+            background:filter===s?STATUS_MAP[s]||BLUE:"transparent",
+            color:filter===s?"#fff":MUTED,
+            border:`1px solid ${filter===s?STATUS_MAP[s]||BLUE:BDR}`,
+          }}>{s}</button>
+        ))}
+      </div>
+
+      {shown.length===0 ? (
+        <Card style={{ textAlign:"center",padding:60 }}>
+          <div style={{ fontSize:40,marginBottom:12 }}>🛡️</div>
+          <div style={{ color:MUTED }}>No leads yet — capture your first lead to build your DPS pipeline.</div>
+        </Card>
+      ) : (
+        <div style={{ display:"flex",flexDirection:"column",gap:6 }}>
+          {shown.map(lead=>(
+            <div key={lead.id} style={{ background:CARD,border:`1px solid ${BDR}`,borderRadius:8,padding:"11px 14px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap" }}>
+              <div style={{ width:36,height:36,borderRadius:"50%",background:BLUEG,border:`1.5px solid ${BLUE}`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:13,color:BLUE,flexShrink:0 }}>
+                {lead.firstName?.[0]}{lead.lastName?.[0]}
+              </div>
+              <div style={{ flex:"1 1 140px",minWidth:0 }}>
+                <div style={{ fontWeight:700,fontSize:14,color:WHITE }}>{lead.firstName} {lead.lastName}</div>
+                <div style={{ fontFamily:"'Share Tech Mono',monospace",fontSize:11,color:MUTED }}>{lead.phone}</div>
+              </div>
+              <div style={{ fontSize:12,color:MUTED,flex:"0 0 90px" }}>{lead.city}</div>
+              {lead.packageInterest && <Pill color={CYAN}>{lead.packageInterest.split(" ")[0]}</Pill>}
+              <div style={{ display:"flex",gap:4,flexWrap:"wrap" }}>
+                {lead.isNewMover  && <Pill color={GOLD}>🏡 New Mover</Pill>}
+                {lead.isHomeowner && <Pill color={GREEN}>🔑 Owner</Pill>}
+                {lead.urgency?.includes("High") && <Pill color={RED}>🔥 Hot</Pill>}
+                {lead.language==="Spanish" && <Pill color="#A855F7">🇲🇽 ES</Pill>}
+              </div>
+              <Pill color={STATUS_MAP[lead.source?.split(" ")[0]]||MUTED}>{lead.source||"Unknown"}</Pill>
+              <select value={lead.status} onChange={e=>updateLead(lead.id,{status:e.target.value})}
+                style={{ width:140,fontSize:12,fontWeight:700,color:STATUS_MAP[lead.status]||BLUE,background:CARD2,border:`1px solid ${STATUS_MAP[lead.status]||BDR}` }}>
+                {allStatuses.map(s=><option key={s}>{s}</option>)}
+              </select>
+              <div style={{ fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:DIM,flex:"0 0 120px" }}>{lead.timestamp}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════
+   4. AD GENERATOR — DPS Specific
+════════════════════════════════════════════════════════════ */
+const AdGenerator = () => {
+  const [platform, setPlatform] = useState("Facebook Lead Form Ad");
+  const [city,     setCity]     = useState("Santa Cruz");
+  const [pkg,      setPkg]      = useState("VIDEO LITE $59.99/mo");
+  const [audience, setAudience] = useState("New homeowners 28–45");
+  const [lang,     setLang]     = useState("English");
+  const [angle,    setAngle]    = useState("Fear of Loss — Crime in neighborhood");
+  const [out, setOut] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const ANGLES = [
+    "Fear of Loss — Crime in neighborhood",
+    "Free Equipment Offer — $850 value hook",
+    "New Homeowner — First home protection",
+    "Social Proof — Local neighbors use DPS",
+    "6-Month Guarantee — No-risk offer",
+    "Price Anchor — Show full cost, reveal promo",
+    "Scarcity — Limited install slots this week",
+    "Family Protection — Kids/pets at home",
+    "Smart Home — Tech-forward angle",
+    "Spanish — Familia y Protección",
+  ];
+
+  const gen = async () => {
+    setLoading(true); setOut("");
+    const sys = `You are the #1 direct-response copywriter for ADT authorized dealer ads in California. You write for Direct Protection Security (DPS), one of California's top 10 ADT dealers. You know what converts in home security advertising — specific numbers, local references, loss aversion, and frictionless CTAs. Real DPS offers: $850 free equipment, $99 install fee, 6-month money-back guarantee, 24/7 ADT monitoring. The highest-converting DPS package is VIDEO LITE at $59.99/mo. Always include the DPS phone number for New Customers: 888-437-7765. Never make false guarantees. All CA ads must comply with CCPA.`;
+    const prompt = `Write MAXIMUM-CONVERTING ad copy for Direct Protection Security (ADT Authorized Dealer):
+
+PLATFORM: ${platform}
+TARGET CITY: ${city}, California
+PACKAGE TO PROMOTE: ${pkg}
+AUDIENCE: ${audience}
+LANGUAGE: ${lang}
+PSYCHOLOGICAL ANGLE: ${angle}
+
+━━━ DELIVER ━━━
+
+📢 VERSION A — Primary
+HEADLINE 1: (≤40 chars, use city name)
+HEADLINE 2: (≤40 chars, use specific price or offer)
+PRIMARY TEXT: (2–3 sentences — local hook, proof, CTA)
+CTA BUTTON: (4–6 words)
+AD DESCRIPTION: (1 reinforcing sentence)
+
+📢 VERSION B — A/B Test Variant
+[Same structure, different angle]
+
+📢 VERSION C — POWER HOOK (video/story format opener)
+[Start with a surprising local crime stat or question for ${city}]
+
+🎯 FACEBOOK TARGETING SETUP
+Exact settings: age, interests, behaviors, life events for Meta Ads Manager
+
+📊 2025 BENCHMARK NOTE
+Expected CPL range for this ad type in ${city} market, based on 2025 avg CPL $27.66
+
+⚖️ CALIFORNIA COMPLIANCE
+Flag anything that needs adjustment for CA law. Include "Reply STOP to opt out" reminder.`;
+
+    try {
+      setOut(await claude(sys, prompt, 1000));
+    } catch { setOut("Error — please retry."); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="fade-up">
+      <SecHead icon="⚡" label="AD GENERATOR" sub="DPS-specialized high-converting copy for every platform — powered by Claude AI" />
+      <div style={{ display:"grid",gridTemplateColumns:"280px 1fr",gap:16 }}>
+        <Card glow>
+          <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:14,fontWeight:700,color:BLUE,marginBottom:14 }}>⚡ AD CONFIG</div>
+          {[
+            ["Platform",  platform,  setPlatform,  ["Facebook Lead Form Ad","Instagram Story / Reel","Google Responsive Search Ad","YouTube Pre-Roll (15s script)","YouTube Pre-Roll (30s script)","Nextdoor Sponsored Post","TikTok Ad Script","Google LSA Copy","SMS Text (TCPA-compliant)","Direct Mail Postcard","Email Subject + Preview"]],
+            ["Target City",city,     setCity,       CITIES],
+            ["DPS Package",pkg,      setPkg,        ["REMOTE $49.99/mo","CONTROL $57.99/mo","VIDEO LITE $59.99/mo","VIDEO+AUTO $64.99/mo","Best Offer Available"]],
+            ["Audience",   audience, setAudience,   ["New homeowners 28–45","Homeowners 45–65","Senior homeowners 65+","Spanish-speaking families","Remote workers / home office","New parents / young families","Recently moved (6 months)","Upgrade from competitor system"]],
+            ["Language",   lang,     setLang,       ["English","Spanish","Bilingual — Both Versions"]],
+            ["Angle",      angle,    setAngle,      ANGLES],
+          ].map(([l,v,sv,opts])=>(
+            <Fld key={l} label={l}>
+              <select value={v} onChange={e=>sv(e.target.value)}>
+                {opts.map(o=><option key={o}>{o}</option>)}
+              </select>
+            </Fld>
+          ))}
+          <Btn onClick={gen} disabled={loading} block>
+            {loading?<><Spinner/>Forging...</>:"⚡ FORGE DPS AD COPY"}
+          </Btn>
+        </Card>
+
+        <div>
+          <Card style={{ marginBottom:12 }}>
+            <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:14,fontWeight:700,color:BLUE,marginBottom:12 }}>🏆 DPS PROVEN AD HOOKS — HIGHEST CONVERTING</div>
+            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
+              {[
+                { hook:"LOCAL CRIME HOOK",    ex:`"${"{city}"} has seen X break-ins this month. 94% of ADT homes are never targeted again."` },
+                { hook:"FREE EQUIPMENT LEAD", ex:'"Get $850 of DPS/ADT equipment installed FREE* in [city] this week. Only $99 to install."' },
+                { hook:"NEIGHBOR PROOF",      ex:'"Your neighbors in [city] just got DPS installed. Here\'s the deal they got..."' },
+                { hook:"GUARANTEE CLOSE",     ex:'"We\'re so confident, we offer the industry\'s best 6-month money-back guarantee."' },
+              ].map(h=>(
+                <div key={h.hook} style={{ background:"#040D18",borderRadius:7,padding:"10px 12px",borderLeft:`2px solid ${BLUE}` }}>
+                  <div style={{ fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:CYAN,marginBottom:4 }}>{h.hook}</div>
+                  <div style={{ fontSize:12,color:SILVER,fontStyle:"italic",lineHeight:1.5 }}>{h.ex}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
+          {loading && <Card style={{ textAlign:"center",padding:50 }}><Spinner s={28}/><div style={{color:MUTED,marginTop:14,fontFamily:"'Rajdhani',sans-serif",fontSize:18}}>FORGING DPS AD COPY...</div></Card>}
+          <AIOut text={out} label={`DPS · ${pkg} · ${city} · ${platform}`} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════
+   5. SALES SCRIPTS
+════════════════════════════════════════════════════════════ */
+const SalesScripts = () => {
+  const [scenario, setScenario] = useState("Door-to-Door First Knock");
+  const [pkg,      setPkg]      = useState("VIDEO LITE $59.99/mo");
+  const [city,     setCity]     = useState("Santa Cruz");
+  const [lang,     setLang]     = useState("English");
+  const [out, setOut] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const SCENARIOS = [
+    "Door-to-Door First Knock",
+    "Facebook Lead — Inbound Call",
+    "Google LSA — Inbound Call",
+    "Nextdoor Lead — Text/Call",
+    "Referral — Warm Introduction",
+    "Competitor Replacement (Ring/SimpliSafe)",
+    "Upgrade from Basic to Video",
+    "Follow-Up Call — Day 2",
+    "Closing a Quote that went cold",
+    "Spanish — Puerta a Puerta",
+  ];
+
+  const gen = async () => {
+    setLoading(true); setOut("");
+    const sys = `You are the top ADT authorized dealer sales trainer in California, specializing in Direct Protection Security (DPS). You've trained hundreds of reps and know exactly what language converts in the Central California Coast market. You know that the best DPS reps: use the $850 free equipment offer as the anchor, lead with the 6-month guarantee to remove risk, use the VIDEO LITE at $59.99 as the highest-converting package, get the customer to say yes to the appointment — not necessarily the system — and always use local social proof.`;
+    const prompt = `Write a COMPLETE SALES SCRIPT for Direct Protection Security (DPS/ADT):
+
+SCENARIO: ${scenario}
+PACKAGE: ${pkg}
+CITY: ${city}, California
+LANGUAGE: ${lang}
+
+━━━ DELIVER A FULL SCRIPT ━━━
+
+OPENING: (10–15 seconds — get permission to talk)
+PAIN DISCOVERY: (2–3 qualifying questions to uncover their concern)
+THE PRESENTATION: (How to present the DPS package — use the real offer: $850 free equipment, $99 install, 6-month guarantee, $49.99–$64.99/mo)
+TRIAL CLOSE: (Soft close question to test readiness)
+OBJECTION BRIDGE: (How to handle "I need to think about it" and "Too expensive")
+HARD CLOSE: (The final ask — word-for-word)
+FOLLOW-UP CLOSE: (If they say "not today")
+
+ALSO INCLUDE:
+- 3 POWER PHRASES that have highest emotional impact in ${city}
+- THE ONE QUESTION that separates buyers from browsers in this market
+- DPS DIFFERENTIATOR: How to position DPS vs. Ring, SimpliSafe, Vivint in one sentence
+- New customer hotline to give them: ${DPS.newCust}`;
+
+    try {
+      setOut(await claude(sys, prompt, 1000));
+    } catch { setOut("Error — please retry."); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="fade-up">
+      <SecHead icon="◎" label="SALES SCRIPTS" sub="Word-for-word DPS scripts for every scenario — California-tested" />
+      <div style={{ display:"grid",gridTemplateColumns:"280px 1fr",gap:16 }}>
+        <Card glow>
+          <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:14,fontWeight:700,color:BLUE,marginBottom:14 }}>◎ SCRIPT CONFIG</div>
+          {[
+            ["Scenario",  scenario, setScenario, SCENARIOS],
+            ["Package",   pkg,      setPkg,       ["REMOTE $49.99/mo","CONTROL $57.99/mo","VIDEO LITE $59.99/mo","VIDEO+AUTO $64.99/mo"]],
+            ["City",      city,     setCity,      CITIES],
+            ["Language",  lang,     setLang,      ["English","Spanish","Bilingual"]],
+          ].map(([l,v,sv,opts])=>(
+            <Fld key={l} label={l}><select value={v} onChange={e=>sv(e.target.value)}>{opts.map(o=><option key={o}>{o}</option>)}</select></Fld>
+          ))}
+          <Btn onClick={gen} disabled={loading} block>
+            {loading?<><Spinner/>Writing...</>:"◎ GENERATE SCRIPT"}
+          </Btn>
+        </Card>
+
+        <div>
+          <Card style={{ marginBottom:12 }}>
+            <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:14,fontWeight:700,color:GOLD,marginBottom:12 }}>★ TOP DPS DOOR PITCH STRUCTURE (30-SECOND VERSION)</div>
+            <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+              {[
+                ["1. PERMISSION","'Hi, I'm [Name] with Direct Protection Security, the local ADT authorized dealer. Do you have 30 seconds?'"],
+                ["2. HOOK","'We're doing installs in [City] this week and I wanted to show you what your neighbors are getting — $850 of equipment for just $99.'"],
+                ["3. QUALIFY","'Quick question — do you currently have a security system at home?'"],
+                ["4. PRESENT","'For $[49.99/59.99]/mo you get 24/7 ADT monitoring, [cameras/sensors], and our 6-month guarantee — we'll remove it free if you're not happy.'"],
+                ["5. CLOSE","'I have two install windows left this week — Thursday or Friday. Which works better for you?'"],
+              ].map(([step,text])=>(
+                <div key={step} style={{ display:"flex",gap:12,padding:"8px 0",borderBottom:`1px solid ${BDR}` }}>
+                  <Pill color={BLUE}>{step}</Pill>
+                  <div style={{ fontSize:12,color:SILVER,fontStyle:"italic",lineHeight:1.6 }}>{text}</div>
+                </div>
+              ))}
+            </div>
+          </Card>
+          {loading && <Card style={{ textAlign:"center",padding:50 }}><Spinner s={28}/><div style={{color:MUTED,marginTop:14,fontFamily:"'Rajdhani',sans-serif",fontSize:18}}>WRITING YOUR SCRIPT...</div></Card>}
+          <AIOut text={out} label={`${scenario} Script · ${city}`} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════
+   6. SMS ENGINE
+════════════════════════════════════════════════════════════ */
+const SMSEngine = () => {
+  const [seqType, setSeqType] = useState("New Mover — DPS/ADT First Contact");
+  const [city, setCity] = useState("Santa Cruz");
+  const [lang, setLang] = useState("English");
+  const [out, setOut] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const TEMPLATES = [
+    { label:"Instant — Facebook Lead (≤5 min)", color:RED,
+      en:`Hi [FirstName]! This is [Agent] with Direct Protection Security, your local ADT dealer in [City]. I saw you asked about home security — I have a great deal for you this week. Got 2 min to chat? Call/text me: ${DPS.newCust}. Reply STOP to opt out.`,
+      es:`¡Hola [FirstName]! Soy [Agent] de Direct Protection Security, el dealer autorizado de ADT en [City]. Vi que preguntaste sobre seguridad para el hogar — tengo una oferta especial esta semana. ¿Tienes 2 min? Llámame: ${DPS.newCust}. Responde STOP para cancelar.` },
+    { label:"Day 1 — New Mover Hook", color:BLUE,
+      en:`[FirstName], congrats on the new home in [City]! 🏡 As a new homeowner, you qualify for DPS/ADT's best new mover package — $850 free equipment + $99 install. I can get you protected this week. [Agent] ${DPS.newCust}. Reply STOP to opt out.`,
+      es:`[FirstName], ¡felicidades por tu nueva casa en [City]! 🏡 Como nuevo propietario, calificas para nuestro mejor paquete — $850 en equipo gratis + instalación $99. [Agent] ${DPS.newCust}. Responde STOP para cancelar.` },
+    { label:"Day 3 — Local Proof", color:CYAN,
+      en:`[FirstName], quick follow-up — several of your new neighbors in [City] just got DPS/ADT this month. The most popular package is VIDEO LITE at $59.99/mo with cameras + 24/7 monitoring. Want to see what they got? [Agent] ${DPS.newCust}. Reply STOP to opt out.`,
+      es:null },
+    { label:"Day 7 — Guarantee Offer", color:GOLD,
+      en:`[FirstName], last thing I'll say — DPS offers the industry's best 6-month money-back guarantee. If you're not happy, we remove everything free. No risk. Can I show you the system this week? [Agent] ${DPS.newCust}. Reply STOP.`,
+      es:null },
+  ];
+
+  const gen = async () => {
+    setLoading(true); setOut("");
+    const sys = `You are a DPS/ADT sales SMS specialist. You write California TCPA/CCPA-compliant texts that are conversational, short, local, and convert. Real DPS offer: $850 free equipment, $99 install, 6-month guarantee, VIDEO LITE $59.99/mo most popular. DPS new customer line: 888-437-7765. First message must go within 5 minutes. Always under 160 chars. Always include STOP opt-out.`;
+    const prompt = `Write a complete SMS sequence for Direct Protection Security (DPS/ADT):
+
+Sequence: ${seqType}
+City: ${city}, California
+Language: ${lang}
+
+Create an 8-message sequence. For each:
+TIMING: (when to send)
+TEXT: (exact message, under 160 chars, with [FirstName][City][Agent] tokens)
+CHARS: (character count)
+GOAL: (what action you want)
+
+Also include:
+— SPLIT TEST for Message 1 (alternative angle)
+— 3 REPLY KEYWORDS (YES/INFO/STOP) and what auto-action triggers
+— APPOINTMENT CLOSE: 2-message sequence when they show interest
+— CA COMPLIANCE: Confirm this sequence is TCPA-compliant for California`;
+
+    try {
+      setOut(await claude(sys, prompt, 1000));
+    } catch { setOut("Error — retry."); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="fade-up">
+      <SecHead icon="✉" label="SMS FOLLOW-UP ENGINE" sub="California TCPA/CCPA-compliant sequences with DPS branding and real offers" />
+      <div style={{ display:"grid",gridTemplateColumns:"280px 1fr",gap:16 }}>
+        <Card glow>
+          <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:14,fontWeight:700,color:BLUE,marginBottom:14 }}>✉ CONFIG</div>
+          {[
+            ["Sequence",  seqType, setSeqType, ["New Mover — DPS/ADT First Contact","Facebook Lead Form — Instant Follow-Up","Google LSA Lead — Inbound Interest","Cold Lead — 30-Day Re-Engagement","Post-Quote Follow-Up","Referral — Warm Introduction","Post-Install Referral Request"]],
+            ["City",      city,    setCity,    CITIES],
+            ["Language",  lang,    setLang,    ["English","Spanish","Bilingual"]],
+          ].map(([l,v,sv,opts])=>(
+            <Fld key={l} label={l}><select value={v} onChange={e=>sv(e.target.value)}>{opts.map(o=><option key={o}>{o}</option>)}</select></Fld>
+          ))}
+          <Btn onClick={gen} disabled={loading} block>
+            {loading?<><Spinner/>Writing...</>:"✉ GENERATE SEQUENCE"}
+          </Btn>
+          <div style={{ marginTop:16,padding:12,background:BLUEG,borderRadius:8,border:`1px solid ${BLUE}40` }}>
+            <div style={{ fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:CYAN,marginBottom:6 }}>▶ SPEED FACTS</div>
+            {[["<5 min","80% contact rate"],["<1 hr","50% contact"],["<24 hr","20% contact"],[">24 hr","<5% contact"]].map(([t,r])=>(
+              <div key={t} style={{ display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:4 }}>
+                <span style={{ fontFamily:"'Share Tech Mono',monospace",color:t.includes("5 min")?RED:BLUE }}>{t}</span>
+                <span style={{ color:t.includes("5 min")?GREEN:MUTED }}>{r}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <div>
+          <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:14,fontWeight:700,color:WHITE,marginBottom:12 }}>📋 INSTANT-USE DPS TEMPLATES</div>
+          <div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:14 }}>
+            {TEMPLATES.map((t,i)=>(
+              <Card key={i} style={{ borderLeft:`3px solid ${t.color}` }}>
+                <div style={{ display:"flex",justifyContent:"space-between",marginBottom:8 }}>
+                  <Pill color={t.color}>{t.label}</Pill>
+                  <Btn sm variant="ghost" onClick={()=>navigator.clipboard.writeText(t.en)}>📋 Copy EN</Btn>
+                </div>
+                <div style={{ fontSize:12,color:SILVER,lineHeight:1.6,marginBottom:t.es?8:0 }}>{t.en}</div>
+                {t.es && <div style={{ fontSize:12,color:"#A78BFA",lineHeight:1.6,borderTop:`1px solid ${BDR}`,paddingTop:8,marginTop:4 }}>🇲🇽 {t.es}</div>}
+              </Card>
+            ))}
+          </div>
+          {loading && <Card style={{ textAlign:"center",padding:40 }}><Spinner s={24}/><div style={{color:MUTED,marginTop:12}}>Writing your DPS SMS sequence...</div></Card>}
+          <AIOut text={out} label={`${seqType} · ${city}`} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════
+   7. OBJECTION CRUSHER
+════════════════════════════════════════════════════════════ */
+const ObjectionCrusher = () => {
+  const [obj, setObj] = useState("It's too expensive");
+  const [city, setCity] = useState("Santa Cruz");
+  const [out, setOut] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const OBJECTIONS = [
+    "It's too expensive","I need to think about it","I already have Ring / SimpliSafe",
+    "I'm renting — my landlord needs to approve","My neighborhood is safe — I don't need it",
+    "I want to shop around","I need to talk to my spouse first",
+    "ADT has bad reviews / I've heard bad things","The contract is too long",
+    "I'll do it later / not right now","I'm already an ADT customer (other dealer)","What makes you different from ADT direct?",
+  ];
+
+  const gen = async () => {
+    setLoading(true); setOut("");
+    const sys = `You are a top ADT authorized dealer sales closer for Direct Protection Security in California. You've heard every objection and have word-for-word rebuttals that maintain rapport, address the real concern, and re-anchor to the DPS value proposition ($850 free equipment, 6-month guarantee, 24/7 ADT monitoring, VIDEO LITE at $59.99/mo). You never argue — you empathize and redirect.`;
+    const prompt = `Write a complete OBJECTION HANDLING PLAYBOOK for Direct Protection Security (DPS/ADT):
+
+OBJECTION: "${obj}"
+CITY: ${city}, California
+
+━━━ DELIVER ━━━
+
+THE REAL CONCERN BEHIND THIS OBJECTION:
+(What is the prospect actually worried about?)
+
+WRONG RESPONSE TO AVOID:
+(What most reps say that kills the deal)
+
+WORD-FOR-WORD REBUTTAL (3 variations):
+— Version 1: Empathy + Redirect
+— Version 2: Proof / Social Proof angle
+— Version 3: Guarantee / Risk-removal angle
+
+FOLLOW-UP QUESTION:
+(After the rebuttal, what do you ask to move forward?)
+
+CLOSING BRIDGE:
+(If they accept the rebuttal, the exact next close attempt)
+
+DPS-SPECIFIC LEVERAGE POINT:
+(Which DPS feature/offer specifically neutralizes this objection)
+
+LOCAL PROOF STATEMENT:
+(Something specific to ${city} that helps close this objection)`;
+
+    try {
+      setOut(await claude(sys, prompt, 1000));
+    } catch { setOut("Error — retry."); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="fade-up">
+      <SecHead icon="◈" label="OBJECTION CRUSHER" sub="Word-for-word DPS rebuttals for every resistance point — California-calibrated" />
+      <div style={{ display:"grid",gridTemplateColumns:"280px 1fr",gap:16 }}>
+        <Card glow>
+          <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:14,fontWeight:700,color:BLUE,marginBottom:14 }}>◈ SELECT OBJECTION</div>
+          <Fld label="Objection Heard">
+            <select value={obj} onChange={e=>setObj(e.target.value)}>{OBJECTIONS.map(o=><option key={o}>{o}</option>)}</select>
+          </Fld>
+          <Fld label="City">
+            <select value={city} onChange={e=>setCity(e.target.value)}>{CITIES.map(c=><option key={c}>{c}</option>)}</select>
+          </Fld>
+          <Btn onClick={gen} disabled={loading} block>
+            {loading?<><Spinner/>Writing...</>:"◈ CRUSH THIS OBJECTION"}
+          </Btn>
+          <div style={{ marginTop:16 }}>
+            <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:13,fontWeight:700,color:GOLD,marginBottom:10 }}>★ TOP DPS RESPONSES</div>
+            <div style={{ fontSize:12,color:SILVER,lineHeight:1.7,fontStyle:"italic" }}>
+              "I'm so confident in this system I'll put it in writing — if you're not happy in 6 months, we remove everything free."
+            </div>
+            <div style={{ fontSize:12,color:SILVER,lineHeight:1.7,fontStyle:"italic",marginTop:8,borderTop:`1px solid ${BDR}`,paddingTop:8 }}>
+              "Ring is great for seeing who's at your door. ADT is for when the door is actually being kicked in — that's when you need a live person calling 911."
+            </div>
+          </div>
+        </Card>
+        <div>
+          <Card style={{ marginBottom:12 }}>
+            <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:14,fontWeight:700,color:WHITE,marginBottom:12 }}>◈ QUICK-FIRE COMEBACKS</div>
+            {[
+              ["Too expensive", `"$59.99/mo is $2/day. Your Netflix costs more. What's your family's safety worth?"` ],
+              ["Need to think", `"What specifically would help you feel confident deciding today? Is it price, equipment, or contract?"` ],
+              ["Have Ring",     `"Ring records it. ADT stops it. What happens at 2am when Ring shows someone in your house?"` ],
+              ["Shop around",   `"I'd actually encourage that — and when you compare, you'll see no one offers $850 free equipment with a 6-month guarantee."` ],
+            ].map(([o,r])=>(
+              <div key={o} style={{ marginBottom:10,padding:"8px 12px",background:"#040D18",borderRadius:7,borderLeft:`2px solid ${BLUE}` }}>
+                <div style={{ fontSize:11,fontWeight:700,color:MUTED,marginBottom:4 }}>WHEN THEY SAY: "{o}"</div>
+                <div style={{ fontSize:13,color:WHITE,fontStyle:"italic" }}>{r}</div>
+              </div>
+            ))}
+          </Card>
+          {loading && <Card style={{ textAlign:"center",padding:50 }}><Spinner s={28}/><div style={{color:MUTED,marginTop:14,fontFamily:"'Rajdhani',sans-serif",fontSize:18}}>BUILDING REBUTTAL...</div></Card>}
+          <AIOut text={out} label={`Objection: "${obj}" · ${city}`} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════
+   8. DPS PACKAGES
+════════════════════════════════════════════════════════════ */
+const DPSPackages = () => (
+  <div className="fade-up">
+    <SecHead icon="$" label="DPS PACKAGE VAULT" sub="Real Direct Protection Security pricing from dpsalarm.com — verified" />
+    <div style={{ background:`${GOLD}10`,border:`1px solid ${GOLD}40`,borderRadius:10,padding:"12px 16px",marginBottom:20,display:"flex",alignItems:"center",gap:12 }}>
+      <span style={{ fontSize:20 }}>🎁</span>
+      <div>
+        <div style={{ fontWeight:700,color:GOLD }}>LEAD WITH THIS IN EVERY PITCH: {DPS.freeEquip}</div>
+        <div style={{ fontSize:12,color:MUTED }}>*Requires {DPS.installFee} + purchase of ADT monitoring services. Early cancellation penalties apply.</div>
+      </div>
+    </div>
+    <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20 }}>
+      {PACKAGES.map(p=>(
+        <Card key={p.id} style={{ borderTop:`3px solid ${p.color}`,position:"relative" }}>
+          {p.badge && (
+            <div style={{ position:"absolute",top:-1,right:12,background:p.color,color:"#000",fontSize:9,fontWeight:800,padding:"2px 8px",borderRadius:"0 0 6px 6px",letterSpacing:.5 }}>
+              {p.badge}
+            </div>
+          )}
+          <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:18,fontWeight:800,color:p.color,marginBottom:2 }}>{p.name}</div>
+          <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:28,fontWeight:800,color:WHITE,marginBottom:4 }}>{p.price}</div>
+          <div style={{ fontSize:12,color:WHITE,fontWeight:600,marginBottom:4 }}>{p.headline}</div>
+          <div style={{ fontSize:11,color:MUTED,marginBottom:12,lineHeight:1.4 }}>{p.tagline}</div>
+          <div style={{ marginBottom:12 }}>
+            {p.features.map((f,i)=>(
+              <div key={i} style={{ display:"flex",alignItems:"flex-start",gap:6,marginBottom:4,fontSize:11 }}>
+                <span style={{ color:p.color,flexShrink:0,marginTop:1 }}>✓</span>
+                <span style={{ color:SILVER }}>{f}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ borderTop:`1px solid ${BDR}`,paddingTop:10,marginTop:"auto" }}>
+            <div style={{ fontSize:11,color:MUTED,marginBottom:4 }}>{p.pitch}</div>
+            <div style={{ display:"flex",justifyContent:"space-between",marginTop:6 }}>
+              <div style={{ fontSize:11 }}><span style={{ color:MUTED }}>Est. CPA: </span><span style={{ color:GREEN,fontWeight:700 }}>{p.cpa}</span></div>
+              <div style={{ fontSize:11 }}><span style={{ color:MUTED }}>Close: </span><span style={{ color:p.color,fontWeight:700 }}>{p.closeRate}</span></div>
+            </div>
+            <Pill color={p.color} style={{ marginTop:6 }}>{p.bestFor}</Pill>
+          </div>
+        </Card>
+      ))}
+    </div>
+    <Card>
+      <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:15,fontWeight:700,color:WHITE,marginBottom:14 }}>📦 DPS PRODUCT LINEUP — What You're Selling</div>
+      <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10 }}>
+        {[
+          { cat:"Security Cameras",   items:["Google Nest Indoor Camera","Google Nest Outdoor Camera","Google Nest Doorbell","Google Nest Floodlight Camera"] },
+          { cat:"Safety Sensors",     items:["Door & Window Sensors","Motion Sensors","Smoke Detector","Carbon Monoxide Detector","Flood Detector"] },
+          { cat:"Smart Home Devices", items:["Security Command Panel","Smart Door Lock","Smart Thermostat","Google Nest Hub","Google Nest Hub Max","Google Nest Mini"] },
+        ].map(g=>(
+          <div key={g.cat} style={{ background:"#040D18",borderRadius:8,padding:"12px 14px" }}>
+            <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:13,fontWeight:700,color:BLUE,marginBottom:8 }}>{g.cat}</div>
+            {g.items.map(i=>(
+              <div key={i} style={{ fontSize:12,color:SILVER,marginBottom:4,display:"flex",alignItems:"center",gap:6 }}>
+                <span style={{ color:GREEN,fontSize:10 }}>✓</span>{i}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </Card>
+  </div>
+);
+
+/* ════════════════════════════════════════════════════════════
+   9. SOCIAL PROOF — Real DPS Reviews
+════════════════════════════════════════════════════════════ */
+const SocialProof = () => {
+  const [city, setCity] = useState("Santa Cruz");
+  const [out, setOut] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const gen = async () => {
+    setLoading(true); setOut("");
+    const sys = `You are a social media content strategist for Direct Protection Security (DPS), a top ADT authorized dealer in California. You create ad copy and social posts that use DPS's real testimonials, real offers, and real credibility to generate the lowest CPL possible. You know that testimonial-based ads in home security outperform generic ads by 35%.`;
+    const prompt = `Create SOCIAL PROOF CONTENT PACKAGE for Direct Protection Security targeting ${city}, California:
+
+Real DPS testimonials available:
+- Blake C. (Santa Cruz): "Extremely responsive, knowledgeable, easiest team to work with in home security"
+- Jean E. (Santa Clara): "Everything was done as arranged/scheduled — hard to find these days!"
+- Susie Contreras (Burbank): "Never felt pushed into anything. Very pleased with everything!"
+- Grace L. (Oakland): "Will not sell you something you don't need. Great deal!"
+- Nick Johnson (Brentwood): "They were able to set me up the same day. Prices are pretty good."
+
+Create for ${city}:
+1. FACEBOOK AD using a real testimonial (formatted for maximum conversion)
+2. INSTAGRAM CAPTION (for before/after or product photo post)
+3. NEXTDOOR SPONSORED POST (neighborhood trust angle)
+4. GOOGLE MY BUSINESS POST (for DPS Santa Cruz or nearest location)
+5. 3 SHORT VIDEO TESTIMONIAL SCRIPTS (15-second UGC-style)
+6. REVIEW REQUEST SMS (to send post-install for getting more 5-star reviews)`;
+
+    try {
+      setOut(await claude(sys, prompt, 1000));
+    } catch { setOut("Error — retry."); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="fade-up">
+      <SecHead icon="★" label="SOCIAL PROOF ARSENAL" sub="Real DPS testimonials + AI-generated social content for maximum credibility" />
+      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:20 }}>
+        {REVIEWS.map((r,i)=>(
+          <Card key={i} style={{ borderLeft:`3px solid ${i%3===0?BLUE:i%3===1?GOLD:CYAN}` }}>
+            <div style={{ display:"flex",justifyContent:"space-between",marginBottom:6 }}>
+              <div>
+                <div style={{ fontWeight:700,fontSize:13,color:WHITE }}>{r.name}</div>
+                <div style={{ fontSize:11,color:MUTED }}>{r.city}</div>
+              </div>
+              <Stars n={r.stars} />
+            </div>
+            <div style={{ fontSize:12,color:SILVER,lineHeight:1.6,fontStyle:"italic" }}>"{r.text}"</div>
+            <div style={{ marginTop:8,display:"flex",gap:6 }}>
+              <Pill color={MUTED}>dpsalarm.com</Pill>
+              {r.city===city && <Pill color={GREEN}>📍 LOCAL</Pill>}
+            </div>
+          </Card>
+        ))}
+      </div>
+      <Card style={{ marginBottom:12 }}>
+        <div style={{ display:"flex",gap:12,alignItems:"flex-end" }}>
+          <div style={{ flex:1 }}>
+            <Fld label="Generate Social Content For City">
+              <select value={city} onChange={e=>setCity(e.target.value)}>{CITIES.map(c=><option key={c}>{c}</option>)}</select>
+            </Fld>
+          </div>
+          <Btn onClick={gen} disabled={loading}>
+            {loading?<><Spinner/>Generating...</>:"★ GENERATE SOCIAL CONTENT"}
+          </Btn>
+        </div>
+      </Card>
+      {loading && <Card style={{ textAlign:"center",padding:40 }}><Spinner s={24}/><div style={{color:MUTED,marginTop:12}}>Building your DPS social proof content...</div></Card>}
+      <AIOut text={out} label={`DPS Social Proof Content · ${city}`} />
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════
+   10. MARKET INTEL
+════════════════════════════════════════════════════════════ */
+const MarketIntel = () => {
+  const [topic,  setTopic]  = useState("");
+  const [county, setCounty] = useState("Santa Cruz County");
+  const [out, setOut] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const PRESETS = [
+    "Best Facebook ad strategies for ADT authorized dealers in California 2025",
+    "How to beat Ring and SimpliSafe in door-to-door and social media in CA",
+    "Top converting ad creative for home security in new mover markets",
+    "Nextdoor advertising strategy for home security in Santa Cruz and Monterey County",
+    "Google LSA setup and optimization for ADT authorized dealers",
+    "TikTok ads for home security — what works in 2025 for under-40 homeowners",
+    "Spanish-language home security ads — best practices for Central CA",
+    "How to use the $850 free equipment offer in ads without triggering CCPA issues",
+    "Competitor analysis — Vivint vs. ADT in California social media advertising",
+    "New mover targeting for ADT — best data sources and platforms in 2025",
+  ];
+
+  const research = async () => {
+    if (!topic) return;
+    setLoading(true); setOut("");
+    const sys = `You are the top competitive intelligence analyst for ADT authorized dealer marketing in California. You specialize in the Central Coast and South Bay markets (Santa Cruz, Monterey, Gilroy, Morgan Hill, Salinas). You have deep knowledge of 2025 ad platform performance data, competitor strategies, and what specifically works for DPS-type dealers. Give specific, actionable, data-backed intelligence. Reference the 2025 Facebook benchmark: avg CPL $27.66, CVR 7.72%. Best performing ADT CPL with new mover targeting: $18–24.`;
+    const prompt = `Strategic intelligence brief for Direct Protection Security (DPS/ADT Authorized Dealer):
+
+TOPIC: "${topic}"
+FOCUS MARKET: ${county} — also covering Gilroy, Morgan Hill, Salinas
+DPS Context: Top 10 CA ADT dealer, since 2006, offers $850 free equipment, 6-month guarantee, VIDEO LITE $59.99/mo most popular
+
+━━━ INTEL BRIEF ━━━
+
+## EXECUTIVE SUMMARY (2–3 sentences)
+
+## WHAT'S WINNING RIGHT NOW (2025)
+Top 3–5 specific tactics with platform, format, copy angle, and why they work
+
+## COMPETITOR INTEL
+What Vivint, Ring Dealers, Brinks, and SimpliSafe are doing in ${county} — and where DPS has the edge
+
+## CALIFORNIA-SPECIFIC FACTORS
+Laws, market conditions, or demographics that specifically affect this in CA
+
+## CPL & PERFORMANCE BENCHMARKS
+Real numbers for this tactic in this market
+
+## 3 ACTIONS FOR DPS THIS WEEK
+Specific, implementable steps
+
+## THE CONTRARIAN OPPORTUNITY
+One thing most DPS competitors are NOT doing that represents a clear win`;
+
+    try {
+      setOut(await claude(sys, prompt, 1000));
+    } catch { setOut("Error — retry."); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="fade-up">
+      <SecHead icon="◉" label="MARKET INTEL" sub="Competitive intelligence for DPS/ADT — California-specific security market" />
+      <div style={{ display:"grid",gridTemplateColumns:"1fr 260px",gap:16,marginBottom:16 }}>
+        <Card>
+          <div style={{ display:"flex",gap:10,marginBottom:12 }}>
+            <div style={{ flex:1 }}>
+              <Fld label="Research Topic">
+                <input value={topic} onChange={e=>setTopic(e.target.value)} placeholder="Type a question or click a preset below..." />
+              </Fld>
+            </div>
+            <div style={{ width:200 }}>
+              <Fld label="Market Focus">
+                <select value={county} onChange={e=>setCounty(e.target.value)}>
+                  {["Santa Cruz County","Monterey County","Gilroy / Morgan Hill","Salinas Valley","All Territory","All of California"].map(c=><option key={c}>{c}</option>)}
+                </select>
+              </Fld>
+            </div>
+          </div>
+          <div style={{ marginBottom:14 }}>
+            <label style={{ fontSize:11,fontWeight:700,color:MUTED,textTransform:"uppercase",letterSpacing:.8,display:"block",marginBottom:8 }}>Quick Research Presets</label>
+            <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+              {PRESETS.map(p=>(
+                <button key={p} onClick={()=>setTopic(p)} style={{
+                  padding:"4px 12px",borderRadius:20,fontSize:11,fontWeight:600,
+                  background:topic===p?BLUEG:"transparent",color:topic===p?BLUE:MUTED,
+                  border:`1px solid ${topic===p?BLUE:BDR}`,transition:"all .15s",
+                }}>{p.length>52?p.slice(0,52)+"…":p}</button>
+              ))}
+            </div>
+          </div>
+          <Btn onClick={research} disabled={loading||!topic}>
+            {loading?<><Spinner/>Researching...</>:"◉ RUN INTEL BRIEF"}
+          </Btn>
+        </Card>
+
+        <Card>
+          <div style={{ fontFamily:"'Rajdhani',sans-serif",fontSize:14,fontWeight:700,color:BLUE,marginBottom:12 }}>$ 2025 AD BENCHMARKS</div>
+          {[
+            { c:"Facebook Lead Form ADT",   v:"$18–24 CPL",  t:GOLD  },
+            { c:"Facebook New Mover ADT",   v:"$20–27 CPL",  t:BLUE  },
+            { c:"Google LSA ADT",           v:"$22–30 CPL",  t:CYAN  },
+            { c:"Nextdoor ADT Sponsored",   v:"$8–14 CPL",   t:GREEN },
+            { c:"YouTube Pre-Roll ADT",     v:"$24–38 CPL",  t:SILVER},
+            { c:"Industry Avg (2025)",      v:"$27.66 CPL",  t:MUTED },
+            { c:"Industry CVR (2025)",      v:"7.72%",       t:MUTED },
+          ].map(r=>(
+            <div key={r.c} style={{ display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${BDR}`,fontSize:11 }}>
+              <span style={{ color:WHITE }}>{r.c}</span>
+              <span style={{ fontFamily:"'Share Tech Mono',monospace",color:r.t,fontWeight:600 }}>{r.v}</span>
+            </div>
+          ))}
+        </Card>
+      </div>
+      {loading && <Card style={{ textAlign:"center",padding:50 }}><Spinner s={28}/><div style={{color:MUTED,marginTop:14,fontFamily:"'Rajdhani',sans-serif",fontSize:18}}>RUNNING COMPETITIVE ANALYSIS...</div></Card>}
+      <AIOut text={out} label={`DPS Intel · ${county}`} />
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════
+   APP ROOT
+════════════════════════════════════════════════════════════ */
+export default function App() {
+  const [active, setActive] = useState("command");
+  const [leads,  setLeads]  = useState([]);
+
+  const addLead    = useCallback(l => setLeads(p=>[...p,l]), []);
+  const updateLead = useCallback((id,u) => setLeads(p=>p.map(l=>l.id===id?{...l,...u}:l)), []);
+
+  const PAGES = {
+    command:    <CommandCenter leads={leads} setActive={setActive} />,
+    capture:    <LeadCapture addLead={addLead} />,
+    log:        <LeadPipeline leads={leads} updateLead={updateLead} />,
+    adgen:      <AdGenerator />,
+    scripts:    <SalesScripts />,
+    sms:        <SMSEngine />,
+    objections: <ObjectionCrusher />,
+    packages:   <DPSPackages />,
+    reviews:    <SocialProof />,
+    intel:      <MarketIntel />,
+  };
+
+  return (
+    <>
+      <style>{CSS}</style>
+      <div style={{ display:"flex",minHeight:"100vh" }}>
+        <Sidebar active={active} setActive={setActive} leads={leads} />
+        <div style={{ marginLeft:230,flex:1,display:"flex",flexDirection:"column" }}>
+          <Ticker />
+          <main style={{ flex:1,padding:"26px 30px",overflowY:"auto" }}>
+            {PAGES[active]}
+          </main>
+        </div>
+      </div>
+    </>
+  );
+}

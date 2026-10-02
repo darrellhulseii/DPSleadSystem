@@ -1,5 +1,19 @@
-import { useState, useEffect, useCallback } from "react";
-import * as XLSX from "xlsx";
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DPS Lead System</title>
+<style>body{margin:0;background:#03080F;color:#D9E6F2}</style>
+<script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useCallback } = React;
 
 /* ══════════════════════════════════════════════════════════════
    DIRECT PROTECTION SECURITY — ADT AUTHORIZED DEALER
@@ -206,12 +220,24 @@ Ads and texts must suit California law (CCPA, TCPA). Every marketing text carrie
 FORMAT
 Your output appears as plain text in a copy panel. Use the section labels the request gives, line breaks, and dashes for lists. Don't use markdown symbols such as **, ##, or tables. When the request asks for Spanish, write natural, conversational Spanish rather than a literal translation; for bilingual, give each piece in English and then Spanish.`;
 
+// The API key is entered on the Settings page and kept only in this browser's storage.
+const KEY_STORE = "dps_anthropic_api_key";
+const getApiKey = () => { try { return localStorage.getItem(KEY_STORE)||""; } catch { return ""; } };
+
 // Opus 5.5 always thinks before answering, and that thinking counts toward max_tokens,
 // so the limit leaves room for it plus the reply. Effort controls how much it thinks.
 async function claude(sys, msg, { effort="medium", maxTokens=16000 } = {}) {
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("Add your Anthropic API key on the Settings page first.");
   const r = await fetch("https://api.anthropic.com/v1/messages",{
     method:"POST",
-    headers:{ "Content-Type":"application/json","anthropic-beta":"server-side-fallback-2026-07-01" },
+    headers:{
+      "Content-Type":"application/json",
+      "x-api-key":apiKey,
+      "anthropic-version":"2023-06-01",
+      "anthropic-dangerous-direct-browser-access":"true",
+      "anthropic-beta":"server-side-fallback-2026-07-01",
+    },
     body: JSON.stringify({
       model:"claude-opus-5-5",
       max_tokens:maxTokens,
@@ -328,6 +354,7 @@ const NAV = [
   { id:"packages",  icon:"$", label:"DPS Packages"      },
   { id:"reviews",   icon:"★", label:"Social Proof"      },
   { id:"intel",     icon:"◉", label:"Market Intel"      },
+  { id:"settings",  icon:"⚙", label:"Settings"          },
 ];
 
 /* ═══ SIDEBAR ════════════════════════════════════════════════ */
@@ -1437,11 +1464,56 @@ THE CONTRARIAN OPPORTUNITY
 };
 
 /* ════════════════════════════════════════════════════════════
+   11. SETTINGS
+════════════════════════════════════════════════════════════ */
+const Settings = () => {
+  const [key, setKey] = useState(getApiKey());
+  const [msg, setMsg] = useState("");
+
+  const save = () => {
+    try {
+      if (key.trim()) localStorage.setItem(KEY_STORE, key.trim());
+      else localStorage.removeItem(KEY_STORE);
+      setMsg(key.trim() ? "Key saved in this browser." : "Key removed from this browser.");
+    } catch { setMsg("This browser blocked storage, so the key can't be saved here."); }
+  };
+  const clear = () => { setKey(""); try { localStorage.removeItem(KEY_STORE); } catch {} setMsg("Key removed from this browser."); };
+
+  return (
+    <div className="fade-up">
+      <SecHead icon="⚙" label="SETTINGS" sub="Connect the AI tools to your Anthropic account" />
+      <Card style={{ maxWidth:620 }}>
+        <Fld label="Anthropic API Key">
+          <input type="password" value={key} onChange={e=>{ setKey(e.target.value); setMsg(""); }} placeholder="sk-ant-..." autoComplete="off" />
+        </Fld>
+        <div style={{ display:"flex",gap:8,marginBottom:14 }}>
+          <Btn onClick={save}>Save Key</Btn>
+          <Btn onClick={clear} variant="ghost">Remove Key</Btn>
+        </div>
+        {msg && <div style={{ fontSize:12,color:GREEN,marginBottom:12 }}>{msg}</div>}
+        <div style={{ fontSize:12,color:MUTED,lineHeight:1.7 }}>
+          The Ad Generator, Sales Scripts, SMS, Objection, Social Proof, and Market Intel tools call Claude with this key.
+          It is stored only in this browser on this device and is never added to the website's code.
+          Anyone with access to this browser can use it, so use a key with a spending limit, and remove it on shared computers.
+          Create and limit keys at console.anthropic.com.
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+/* ════════════════════════════════════════════════════════════
    APP ROOT
 ════════════════════════════════════════════════════════════ */
-export default function App() {
+// Leads are kept in this browser's storage so they survive a page reload.
+const LEADS_STORE = "dps_leads";
+const loadLeads = () => { try { return JSON.parse(localStorage.getItem(LEADS_STORE)||"[]"); } catch { return []; } };
+
+function App() {
   const [active, setActive] = useState("command");
-  const [leads,  setLeads]  = useState([]);
+  const [leads,  setLeads]  = useState(loadLeads);
+
+  useEffect(() => { try { localStorage.setItem(LEADS_STORE, JSON.stringify(leads)); } catch {} }, [leads]);
 
   const addLead    = useCallback(l => setLeads(p=>[...p,l]), []);
   const updateLead = useCallback((id,u) => setLeads(p=>p.map(l=>l.id===id?{...l,...u}:l)), []);
@@ -1457,6 +1529,7 @@ export default function App() {
     packages:   <DPSPackages />,
     reviews:    <SocialProof />,
     intel:      <MarketIntel />,
+    settings:   <Settings />,
   };
 
   return (
@@ -1474,3 +1547,8 @@ export default function App() {
     </>
   );
 }
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

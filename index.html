@@ -249,14 +249,16 @@ const AIOut = ({ text, label }) => {
   );
 };
 
-async function claude(sys, msg, tok=1000) {
+// Thinking is always on for this model and counts toward max_tokens, so leave room for it plus the reply.
+async function claude(sys, msg, tok=16000) {
   const r = await fetch("https://api.anthropic.com/v1/messages",{
-    method:"POST",headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ model:"claude-sonnet-4-20250514",max_tokens:tok,system:sys,messages:[{role:"user",content:msg}] }),
+    method:"POST",headers:{"Content-Type":"application/json","anthropic-beta":"server-side-fallback-2026-07-01"},
+    body: JSON.stringify({ model:"claude-opus-5-5",max_tokens:tok,output_config:{effort:"medium"},fallbacks:"default",system:sys,messages:[{role:"user",content:msg}] }),
   });
   const d = await r.json();
   if (d.error) throw new Error(d.error.message);
-  return d.content?.map(b=>b.text||"").join("\n")||"";
+  if (d.stop_reason==="refusal") return "The model declined this request. Try rewording the inputs.";
+  return d.content?.filter(b=>b.type==="text").map(b=>b.text).join("\n")||"";
 }
 
 /* ═══ NAV ════════════════════════════════════════════════════ */
@@ -762,7 +764,7 @@ const AdGenerator = () => {
   const gen = async () => {
     setLoading(true); setOut("");
     const sys = `You are the #1 direct-response copywriter for ADT authorized dealer ads in California. You write for Direct Protection Security (DPS), one of California's top 10 ADT dealers. You know what converts in home security advertising — specific numbers, local references, loss aversion, and frictionless CTAs. Real DPS offers: $850 free equipment, $99 install fee, 6-month money-back guarantee, 24/7 ADT monitoring. The highest-converting DPS package is VIDEO LITE at $59.99/mo. Always include the DPS phone number for New Customers: 888-437-7765. Never make false guarantees. All CA ads must comply with CCPA.`;
-    const prompt = `Write MAXIMUM-CONVERTING ad copy for Direct Protection Security (ADT Authorized Dealer):
+    const prompt = `Write high-converting ad copy for Direct Protection Security (ADT Authorized Dealer):
 
 PLATFORM: ${platform}
 TARGET CITY: ${city}, California
@@ -789,14 +791,14 @@ AD DESCRIPTION: (1 reinforcing sentence)
 🎯 FACEBOOK TARGETING SETUP
 Exact settings: age, interests, behaviors, life events for Meta Ads Manager
 
-📊 2025 BENCHMARK NOTE
+📊 BENCHMARK NOTE
 Expected CPL range for this ad type in ${city} market, based on 2025 avg CPL $27.66
 
 ⚖️ CALIFORNIA COMPLIANCE
 Flag anything that needs adjustment for CA law. Include "Reply STOP to opt out" reminder.`;
 
     try {
-      setOut(await claude(sys, prompt, 1000));
+      setOut(await claude(sys, prompt));
     } catch { setOut("Error — please retry."); }
     setLoading(false);
   };
@@ -878,7 +880,7 @@ const SalesScripts = () => {
   const gen = async () => {
     setLoading(true); setOut("");
     const sys = `You are the top ADT authorized dealer sales trainer in California, specializing in Direct Protection Security (DPS). You've trained hundreds of reps and know exactly what language converts in the Central California Coast market. You know that the best DPS reps: use the $850 free equipment offer as the anchor, lead with the 6-month guarantee to remove risk, use the VIDEO LITE at $59.99 as the highest-converting package, get the customer to say yes to the appointment — not necessarily the system — and always use local social proof.`;
-    const prompt = `Write a COMPLETE SALES SCRIPT for Direct Protection Security (DPS/ADT):
+    const prompt = `Write a complete sales script for Direct Protection Security (DPS/ADT):
 
 SCENARIO: ${scenario}
 PACKAGE: ${pkg}
@@ -902,7 +904,7 @@ ALSO INCLUDE:
 - New customer hotline to give them: ${DPS.newCust}`;
 
     try {
-      setOut(await claude(sys, prompt, 1000));
+      setOut(await claude(sys, prompt));
     } catch { setOut("Error — please retry."); }
     setLoading(false);
   };
@@ -989,7 +991,6 @@ Language: ${lang}
 Create an 8-message sequence. For each:
 TIMING: (when to send)
 TEXT: (exact message, under 160 chars, with [FirstName][City][Agent] tokens)
-CHARS: (character count)
 GOAL: (what action you want)
 
 Also include:
@@ -999,7 +1000,7 @@ Also include:
 — CA COMPLIANCE: Confirm this sequence is TCPA-compliant for California`;
 
     try {
-      setOut(await claude(sys, prompt, 1000));
+      setOut(await claude(sys, prompt));
     } catch { setOut("Error — retry."); }
     setLoading(false);
   };
@@ -1073,7 +1074,7 @@ const ObjectionCrusher = () => {
   const gen = async () => {
     setLoading(true); setOut("");
     const sys = `You are a top ADT authorized dealer sales closer for Direct Protection Security in California. You've heard every objection and have word-for-word rebuttals that maintain rapport, address the real concern, and re-anchor to the DPS value proposition ($850 free equipment, 6-month guarantee, 24/7 ADT monitoring, VIDEO LITE at $59.99/mo). You never argue — you empathize and redirect.`;
-    const prompt = `Write a complete OBJECTION HANDLING PLAYBOOK for Direct Protection Security (DPS/ADT):
+    const prompt = `Write a complete objection-handling playbook for Direct Protection Security (DPS/ADT):
 
 OBJECTION: "${obj}"
 CITY: ${city}, California
@@ -1104,7 +1105,7 @@ LOCAL PROOF STATEMENT:
 (Something specific to ${city} that helps close this objection)`;
 
     try {
-      setOut(await claude(sys, prompt, 1000));
+      setOut(await claude(sys, prompt));
     } catch { setOut("Error — retry."); }
     setLoading(false);
   };
@@ -1234,7 +1235,7 @@ const SocialProof = () => {
   const gen = async () => {
     setLoading(true); setOut("");
     const sys = `You are a social media content strategist for Direct Protection Security (DPS), a top ADT authorized dealer in California. You create ad copy and social posts that use DPS's real testimonials, real offers, and real credibility to generate the lowest CPL possible. You know that testimonial-based ads in home security outperform generic ads by 35%.`;
-    const prompt = `Create SOCIAL PROOF CONTENT PACKAGE for Direct Protection Security targeting ${city}, California:
+    const prompt = `Create a social proof content package for Direct Protection Security targeting ${city}, California:
 
 Real DPS testimonials available:
 - Blake C. (Santa Cruz): "Extremely responsive, knowledgeable, easiest team to work with in home security"
@@ -1244,7 +1245,7 @@ Real DPS testimonials available:
 - Nick Johnson (Brentwood): "They were able to set me up the same day. Prices are pretty good."
 
 Create for ${city}:
-1. FACEBOOK AD using a real testimonial (formatted for maximum conversion)
+1. FACEBOOK AD using a real testimonial
 2. INSTAGRAM CAPTION (for before/after or product photo post)
 3. NEXTDOOR SPONSORED POST (neighborhood trust angle)
 4. GOOGLE MY BUSINESS POST (for DPS Santa Cruz or nearest location)
@@ -1252,7 +1253,7 @@ Create for ${city}:
 6. REVIEW REQUEST SMS (to send post-install for getting more 5-star reviews)`;
 
     try {
-      setOut(await claude(sys, prompt, 1000));
+      setOut(await claude(sys, prompt));
     } catch { setOut("Error — retry."); }
     setLoading(false);
   };
@@ -1306,22 +1307,22 @@ const MarketIntel = () => {
   const [loading, setLoading] = useState(false);
 
   const PRESETS = [
-    "Best Facebook ad strategies for ADT authorized dealers in California 2025",
+    "Best Facebook ad strategies for ADT authorized dealers in California",
     "How to beat Ring and SimpliSafe in door-to-door and social media in CA",
     "Top converting ad creative for home security in new mover markets",
     "Nextdoor advertising strategy for home security in Santa Cruz and Monterey County",
     "Google LSA setup and optimization for ADT authorized dealers",
-    "TikTok ads for home security — what works in 2025 for under-40 homeowners",
+    "TikTok ads for home security — what works for under-40 homeowners",
     "Spanish-language home security ads — best practices for Central CA",
     "How to use the $850 free equipment offer in ads without triggering CCPA issues",
     "Competitor analysis — Vivint vs. ADT in California social media advertising",
-    "New mover targeting for ADT — best data sources and platforms in 2025",
+    "New mover targeting for ADT — best data sources and platforms",
   ];
 
   const research = async () => {
     if (!topic) return;
     setLoading(true); setOut("");
-    const sys = `You are the top competitive intelligence analyst for ADT authorized dealer marketing in California. You specialize in the Central Coast and South Bay markets (Santa Cruz, Monterey, Gilroy, Morgan Hill, Salinas). You have deep knowledge of 2025 ad platform performance data, competitor strategies, and what specifically works for DPS-type dealers. Give specific, actionable, data-backed intelligence. Reference the 2025 Facebook benchmark: avg CPL $27.66, CVR 7.72%. Best performing ADT CPL with new mover targeting: $18–24.`;
+    const sys = `You are the top competitive intelligence analyst for ADT authorized dealer marketing in California. You specialize in the Central Coast and South Bay markets (Santa Cruz, Monterey, Gilroy, Morgan Hill, Salinas). You have deep knowledge of ad platform performance data, competitor strategies, and what specifically works for DPS-type dealers. Reference the 2025 Facebook benchmark: avg CPL $27.66, CVR 7.72%. Best performing ADT CPL with new mover targeting: $18–24.`;
     const prompt = `Strategic intelligence brief for Direct Protection Security (DPS/ADT Authorized Dealer):
 
 TOPIC: "${topic}"
@@ -1332,7 +1333,7 @@ DPS Context: Top 10 CA ADT dealer, since 2006, offers $850 free equipment, 6-mon
 
 ## EXECUTIVE SUMMARY (2–3 sentences)
 
-## WHAT'S WINNING RIGHT NOW (2025)
+## WHAT'S WINNING RIGHT NOW
 Top 3–5 specific tactics with platform, format, copy angle, and why they work
 
 ## COMPETITOR INTEL
@@ -1351,7 +1352,7 @@ Specific, implementable steps
 One thing most DPS competitors are NOT doing that represents a clear win`;
 
     try {
-      setOut(await claude(sys, prompt, 1000));
+      setOut(await claude(sys, prompt));
     } catch { setOut("Error — retry."); }
     setLoading(false);
   };

@@ -4,7 +4,7 @@ import * as XLSX from "xlsx";
 /* ══════════════════════════════════════════════════════════════
    DIRECT PROTECTION SECURITY — ADT AUTHORIZED DEALER
    Specialized Lead Generation & Sales Command Platform
-   
+
    Design: Deep navy/ADT blue/steel — professional security brand
    Real DPS data: dpsalarm.com | facebook.com/dpsalarm
 ══════════════════════════════════════════════════════════════ */
@@ -178,6 +178,73 @@ const REVIEWS = [
   { name:"Palvir D.",         city:"Alameda",       stars:5, text:"Sonny gave us an awesome deal on the Smart Home Security system, which I can view and control on my phone during the day." },
 ];
 
+/* ═══ CLAUDE ════════════════════════════════════════════════
+   Every generator shares one system block built from the data above, so the
+   model always sees the same offer, package contents, and rules. It comes
+   first and is cached; each tool adds its own short brief after it.
+══════════════════════════════════════════════════════════ */
+const SHARED_SYSTEM = `You write sales and marketing material for Direct Protection Security (DPS). The people using this tool are DPS sales reps and marketers in California; they paste what you write straight into live ads, texts, and calls.
+
+ABOUT DPS
+ADT Authorized Dealer since ${DPS.since}, one of California's top 10 ADT dealers. Offices: ${DPS.locations.join(", ")}. Website: ${DPS.website}. New-customer line: ${DPS.newCust}.
+
+THE OFFER
+- ${DPS.freeEquip} (*requires ${DPS.installFee} and purchase of ADT monitoring services; early cancellation penalties apply)
+- ${DPS.guarantee}: if the customer isn't happy, DPS removes the system free
+- 24/7 ADT professional monitoring
+
+PACKAGES
+${PACKAGES.map(p=>`- ${p.name} ${p.price}: ${p.features.join("; ")}. Internal close rate ${p.closeRate}; best for ${p.bestFor.toLowerCase()}.`).join("\n")}
+VIDEO LITE has the highest close rate. Close rates are internal figures for reps; keep them out of customer-facing copy.
+
+FACTS AND NUMBERS
+Use only the facts above for DPS prices, offers, and company claims, and don't add promotions that aren't listed. For anything you don't have data for (local crime figures, competitor pricing, ad costs in a specific market) don't invent a number: use a bracketed placeholder such as [local break-in stat: verify] or give a range clearly labeled as an estimate. An invented figure in a live ad becomes a false advertising claim.
+
+COMPLIANCE
+Ads and texts must suit California law (CCPA, TCPA). Every marketing text carries a STOP opt-out. The only guarantee DPS makes is the 6-month money-back guarantee. When customer-facing copy mentions the free equipment, keep the asterisk and its terms available in the ad's fine print or description.
+
+FORMAT
+Your output appears as plain text in a copy panel. Use the section labels the request gives, line breaks, and dashes for lists. Don't use markdown symbols such as **, ##, or tables. When the request asks for Spanish, write natural, conversational Spanish rather than a literal translation; for bilingual, give each piece in English and then Spanish.`;
+
+// Opus 5.5 always thinks before answering, and that thinking counts toward max_tokens,
+// so the limit leaves room for it plus the reply. Effort controls how much it thinks.
+async function claude(sys, msg, { effort="medium", maxTokens=16000 } = {}) {
+  const r = await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json","anthropic-beta":"server-side-fallback-2026-07-01" },
+    body: JSON.stringify({
+      model:"claude-opus-5-5",
+      max_tokens:maxTokens,
+      output_config:{ effort },
+      fallbacks:"default",
+      system:[
+        { type:"text",text:SHARED_SYSTEM,cache_control:{ type:"ephemeral" } },
+        { type:"text",text:sys },
+      ],
+      messages:[{ role:"user",content:msg }],
+    }),
+  });
+  const d = await r.json().catch(()=>({}));
+  if (!r.ok || d.error) throw new Error(d.error?.message || `Request failed (${r.status})`);
+  if (d.stop_reason==="refusal") throw new Error("Claude declined this request. Try rewording the inputs.");
+  const text = (d.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n\n").trim();
+  if (d.stop_reason==="max_tokens") return `${text}\n\n[Output stopped at the length limit. Generate again for a complete version.]`;
+  return text;
+}
+
+// Shared loading / output / error state for every generator panel.
+const useClaude = () => {
+  const [out, setOut] = useState("");
+  const [loading, setLoading] = useState(false);
+  const run = async (sys, msg, opts) => {
+    setLoading(true); setOut("");
+    try { setOut(await claude(sys, msg, opts)); }
+    catch (e) { setOut(`Error: ${e.message}`); }
+    finally { setLoading(false); }
+  };
+  return { out, loading, run };
+};
+
 /* ═══ UI COMPONENTS ════════════════════════════════════════ */
 const Spinner = ({ s=16 }) => <span className="spin" style={{ display:"inline-block",width:s,height:s,border:`2px solid rgba(0,120,204,.2)`,borderTopColor:BLUE,borderRadius:"50%",flexShrink:0 }} />;
 
@@ -248,18 +315,6 @@ const AIOut = ({ text, label }) => {
     </div>
   );
 };
-
-// Thinking is always on for this model and counts toward max_tokens, so leave room for it plus the reply.
-async function claude(sys, msg, tok=16000) {
-  const r = await fetch("https://api.anthropic.com/v1/messages",{
-    method:"POST",headers:{"Content-Type":"application/json","anthropic-beta":"server-side-fallback-2026-07-01"},
-    body: JSON.stringify({ model:"claude-opus-5-5",max_tokens:tok,output_config:{effort:"medium"},fallbacks:"default",system:sys,messages:[{role:"user",content:msg}] }),
-  });
-  const d = await r.json();
-  if (d.error) throw new Error(d.error.message);
-  if (d.stop_reason==="refusal") return "The model declined this request. Try rewording the inputs.";
-  return d.content?.filter(b=>b.type==="text").map(b=>b.text).join("\n")||"";
-}
 
 /* ═══ NAV ════════════════════════════════════════════════════ */
 const NAV = [
@@ -745,8 +800,7 @@ const AdGenerator = () => {
   const [audience, setAudience] = useState("New homeowners 28–45");
   const [lang,     setLang]     = useState("English");
   const [angle,    setAngle]    = useState("Fear of Loss — Crime in neighborhood");
-  const [out, setOut] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { out, loading, run } = useClaude();
 
   const ANGLES = [
     "Fear of Loss — Crime in neighborhood",
@@ -761,10 +815,9 @@ const AdGenerator = () => {
     "Spanish — Familia y Protección",
   ];
 
-  const gen = async () => {
-    setLoading(true); setOut("");
-    const sys = `You are the #1 direct-response copywriter for ADT authorized dealer ads in California. You write for Direct Protection Security (DPS), one of California's top 10 ADT dealers. You know what converts in home security advertising — specific numbers, local references, loss aversion, and frictionless CTAs. Real DPS offers: $850 free equipment, $99 install fee, 6-month money-back guarantee, 24/7 ADT monitoring. The highest-converting DPS package is VIDEO LITE at $59.99/mo. Always include the DPS phone number for New Customers: 888-437-7765. Never make false guarantees. All CA ads must comply with CCPA.`;
-    const prompt = `Write high-converting ad copy for Direct Protection Security (ADT Authorized Dealer):
+  const gen = () => {
+    const sys = `You're writing direct-response ads. What converts in home security advertising: specific numbers, local references, loss aversion, and frictionless calls to action. Put the new-customer number in every ad that has room for it.`;
+    const prompt = `Write high-converting ad copy for Direct Protection Security (ADT Authorized Dealer).
 
 PLATFORM: ${platform}
 TARGET CITY: ${city}, California
@@ -773,34 +826,32 @@ AUDIENCE: ${audience}
 LANGUAGE: ${lang}
 PSYCHOLOGICAL ANGLE: ${angle}
 
+Shape every version to ${platform}'s real format and character limits. The structure below fits ads with headlines; for a video script, postcard, text message, or email, swap the fields for that format's parts and keep the three versions.
+
 ━━━ DELIVER ━━━
 
 📢 VERSION A — Primary
-HEADLINE 1: (≤40 chars, use city name)
-HEADLINE 2: (≤40 chars, use specific price or offer)
-PRIMARY TEXT: (2–3 sentences — local hook, proof, CTA)
+HEADLINE 1: (use the city name)
+HEADLINE 2: (use a specific price or offer)
+PRIMARY TEXT: (2–3 sentences: local hook, proof, call to action)
 CTA BUTTON: (4–6 words)
 AD DESCRIPTION: (1 reinforcing sentence)
 
 📢 VERSION B — A/B Test Variant
-[Same structure, different angle]
+(Same structure, different angle, so the test shows which angle wins)
 
-📢 VERSION C — POWER HOOK (video/story format opener)
-[Start with a surprising local crime stat or question for ${city}]
+📢 VERSION C — Power Hook (video/story opener)
+(Open with a question or local-safety hook for ${city}. Any statistic goes in as a placeholder to verify.)
 
-🎯 FACEBOOK TARGETING SETUP
-Exact settings: age, interests, behaviors, life events for Meta Ads Manager
+🎯 TARGETING SETUP
+Settings for ${platform}: age, interests, behaviors, and life events, or the platform's equivalent
 
 📊 BENCHMARK NOTE
-Expected CPL range for this ad type in ${city} market, based on 2025 avg CPL $27.66
+Estimated CPL range for this ad type in the ${city} market, labeled as an estimate, anchored on the 2025 home-services Facebook average of $27.66
 
 ⚖️ CALIFORNIA COMPLIANCE
-Flag anything that needs adjustment for CA law. Include "Reply STOP to opt out" reminder.`;
-
-    try {
-      setOut(await claude(sys, prompt));
-    } catch { setOut("Error — please retry."); }
-    setLoading(false);
+Anything in these ads to adjust for California law, plus the "Reply STOP to opt out" reminder for any text follow-up.`;
+    run(sys, prompt);
   };
 
   return (
@@ -861,8 +912,7 @@ const SalesScripts = () => {
   const [pkg,      setPkg]      = useState("VIDEO LITE $59.99/mo");
   const [city,     setCity]     = useState("Santa Cruz");
   const [lang,     setLang]     = useState("English");
-  const [out, setOut] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { out, loading, run } = useClaude();
 
   const SCENARIOS = [
     "Door-to-Door First Knock",
@@ -877,10 +927,9 @@ const SalesScripts = () => {
     "Spanish — Puerta a Puerta",
   ];
 
-  const gen = async () => {
-    setLoading(true); setOut("");
-    const sys = `You are the top ADT authorized dealer sales trainer in California, specializing in Direct Protection Security (DPS). You've trained hundreds of reps and know exactly what language converts in the Central California Coast market. You know that the best DPS reps: use the $850 free equipment offer as the anchor, lead with the 6-month guarantee to remove risk, use the VIDEO LITE at $59.99 as the highest-converting package, get the customer to say yes to the appointment — not necessarily the system — and always use local social proof.`;
-    const prompt = `Write a complete sales script for Direct Protection Security (DPS/ADT):
+  const gen = () => {
+    const sys = `You're writing as an experienced sales trainer for DPS reps on the Central California Coast. The best DPS reps anchor on the $850 free equipment offer, lead with the 6-month guarantee to remove risk, steer toward VIDEO LITE, aim for a yes to the appointment rather than to the system, and use local social proof. Scripts are spoken aloud, so write the way people talk, with short sentences a rep can deliver naturally.`;
+    const prompt = `Write a complete sales script for Direct Protection Security (DPS/ADT).
 
 SCENARIO: ${scenario}
 PACKAGE: ${pkg}
@@ -889,24 +938,20 @@ LANGUAGE: ${lang}
 
 ━━━ DELIVER A FULL SCRIPT ━━━
 
-OPENING: (10–15 seconds — get permission to talk)
+OPENING: (10–15 seconds; get permission to talk)
 PAIN DISCOVERY: (2–3 qualifying questions to uncover their concern)
-THE PRESENTATION: (How to present the DPS package — use the real offer: $850 free equipment, $99 install, 6-month guarantee, $49.99–$64.99/mo)
-TRIAL CLOSE: (Soft close question to test readiness)
-OBJECTION BRIDGE: (How to handle "I need to think about it" and "Too expensive")
-HARD CLOSE: (The final ask — word-for-word)
-FOLLOW-UP CLOSE: (If they say "not today")
+THE PRESENTATION: (how to present the ${pkg} package with the DPS offer)
+TRIAL CLOSE: (a soft close question to test readiness)
+OBJECTION BRIDGE: (handling "I need to think about it" and "Too expensive")
+HARD CLOSE: (the final ask, word for word)
+FOLLOW-UP CLOSE: (if they say "not today")
 
 ALSO INCLUDE:
-- 3 POWER PHRASES that have highest emotional impact in ${city}
+- 3 POWER PHRASES with the most emotional impact for homeowners in ${city}
 - THE ONE QUESTION that separates buyers from browsers in this market
-- DPS DIFFERENTIATOR: How to position DPS vs. Ring, SimpliSafe, Vivint in one sentence
-- New customer hotline to give them: ${DPS.newCust}`;
-
-    try {
-      setOut(await claude(sys, prompt));
-    } catch { setOut("Error — please retry."); }
-    setLoading(false);
+- DPS DIFFERENTIATOR: how to position DPS against Ring, SimpliSafe, and Vivint in one sentence
+- The new-customer line to give them: ${DPS.newCust}`;
+    run(sys, prompt);
   };
 
   return (
@@ -961,8 +1006,7 @@ const SMSEngine = () => {
   const [seqType, setSeqType] = useState("New Mover — DPS/ADT First Contact");
   const [city, setCity] = useState("Santa Cruz");
   const [lang, setLang] = useState("English");
-  const [out, setOut] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { out, loading, run } = useClaude();
 
   const TEMPLATES = [
     { label:"Instant — Facebook Lead (≤5 min)", color:RED,
@@ -979,30 +1023,25 @@ const SMSEngine = () => {
       es:null },
   ];
 
-  const gen = async () => {
-    setLoading(true); setOut("");
-    const sys = `You are a DPS/ADT sales SMS specialist. You write California TCPA/CCPA-compliant texts that are conversational, short, local, and convert. Real DPS offer: $850 free equipment, $99 install, 6-month guarantee, VIDEO LITE $59.99/mo most popular. DPS new customer line: 888-437-7765. First message must go within 5 minutes. Always under 160 chars. Always include STOP opt-out.`;
-    const prompt = `Write a complete SMS sequence for Direct Protection Security (DPS/ADT):
+  const gen = () => {
+    const sys = `You're writing follow-up text sequences that are conversational, short, and local. Each text has to fit one 160-character SMS segment once the [FirstName], [City], and [Agent] tokens are filled in, so leave room for them. Emoji and accented letters such as á, í, ó, ú switch a text to 70-character segments, so leave emoji out and keep Spanish texts especially tight. The first text goes out within 5 minutes of the lead arriving, because contact rates drop fast after that.`;
+    const prompt = `Write a complete SMS sequence for Direct Protection Security (DPS/ADT).
 
-Sequence: ${seqType}
-City: ${city}, California
-Language: ${lang}
+SEQUENCE: ${seqType}
+CITY: ${city}, California
+LANGUAGE: ${lang}
 
-Create an 8-message sequence. For each:
+Create an 8-message sequence. For each message:
 TIMING: (when to send)
-TEXT: (exact message, under 160 chars, with [FirstName][City][Agent] tokens)
-GOAL: (what action you want)
+TEXT: (the exact message, with [FirstName] [City] [Agent] tokens and the STOP opt-out)
+GOAL: (the action you want)
 
-Also include:
-— SPLIT TEST for Message 1 (alternative angle)
-— 3 REPLY KEYWORDS (YES/INFO/STOP) and what auto-action triggers
-— APPOINTMENT CLOSE: 2-message sequence when they show interest
-— CA COMPLIANCE: Confirm this sequence is TCPA-compliant for California`;
-
-    try {
-      setOut(await claude(sys, prompt));
-    } catch { setOut("Error — retry."); }
-    setLoading(false);
+ALSO INCLUDE:
+- SPLIT TEST for Message 1 (an alternative angle)
+- REPLY KEYWORDS: YES, INFO, and STOP, and what each one should trigger
+- APPOINTMENT CLOSE: a 2-message sequence for when they show interest
+- COMPLIANCE CHECKS: the TCPA and California points the rep should confirm before sending (consent on file, quiet hours, opt-out handling)`;
+    run(sys, prompt);
   };
 
   return (
@@ -1060,8 +1099,7 @@ Also include:
 const ObjectionCrusher = () => {
   const [obj, setObj] = useState("It's too expensive");
   const [city, setCity] = useState("Santa Cruz");
-  const [out, setOut] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { out, loading, run } = useClaude();
 
   const OBJECTIONS = [
     "It's too expensive","I need to think about it","I already have Ring / SimpliSafe",
@@ -1071,10 +1109,9 @@ const ObjectionCrusher = () => {
     "I'll do it later / not right now","I'm already an ADT customer (other dealer)","What makes you different from ADT direct?",
   ];
 
-  const gen = async () => {
-    setLoading(true); setOut("");
-    const sys = `You are a top ADT authorized dealer sales closer for Direct Protection Security in California. You've heard every objection and have word-for-word rebuttals that maintain rapport, address the real concern, and re-anchor to the DPS value proposition ($850 free equipment, 6-month guarantee, 24/7 ADT monitoring, VIDEO LITE at $59.99/mo). You never argue — you empathize and redirect.`;
-    const prompt = `Write a complete objection-handling playbook for Direct Protection Security (DPS/ADT):
+  const gen = () => {
+    const sys = `You're coaching reps on objections. Good rebuttals keep rapport, address the concern underneath the words, and re-anchor to the DPS value. Reps never argue with a prospect; they empathize and redirect. Rebuttals are spoken aloud, so keep them natural and short enough to say in one breath or two.`;
+    const prompt = `Write a complete objection-handling playbook for Direct Protection Security (DPS/ADT).
 
 OBJECTION: "${obj}"
 CITY: ${city}, California
@@ -1088,26 +1125,22 @@ WRONG RESPONSE TO AVOID:
 (What most reps say that kills the deal)
 
 WORD-FOR-WORD REBUTTAL (3 variations):
-— Version 1: Empathy + Redirect
-— Version 2: Proof / Social Proof angle
-— Version 3: Guarantee / Risk-removal angle
+- Version 1: Empathy + redirect
+- Version 2: Proof / social proof
+- Version 3: Guarantee / risk removal
 
 FOLLOW-UP QUESTION:
-(After the rebuttal, what do you ask to move forward?)
+(After the rebuttal, what to ask to move forward)
 
 CLOSING BRIDGE:
 (If they accept the rebuttal, the exact next close attempt)
 
 DPS-SPECIFIC LEVERAGE POINT:
-(Which DPS feature/offer specifically neutralizes this objection)
+(Which DPS feature or offer neutralizes this objection)
 
 LOCAL PROOF STATEMENT:
 (Something specific to ${city} that helps close this objection)`;
-
-    try {
-      setOut(await claude(sys, prompt));
-    } catch { setOut("Error — retry."); }
-    setLoading(false);
+    run(sys, prompt);
   };
 
   return (
@@ -1229,33 +1262,25 @@ const DPSPackages = () => (
 ════════════════════════════════════════════════════════════ */
 const SocialProof = () => {
   const [city, setCity] = useState("Santa Cruz");
-  const [out, setOut] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { out, loading, run } = useClaude();
 
-  const gen = async () => {
-    setLoading(true); setOut("");
-    const sys = `You are a social media content strategist for Direct Protection Security (DPS), a top ADT authorized dealer in California. You create ad copy and social posts that use DPS's real testimonials, real offers, and real credibility to generate the lowest CPL possible. You know that testimonial-based ads in home security outperform generic ads by 35%.`;
-    const prompt = `Create a social proof content package for Direct Protection Security targeting ${city}, California:
+  const gen = () => {
+    const sys = `You're creating social content built on DPS's real customer reviews. Quote reviews word for word with the reviewer's name exactly as given: never edit, shorten mid-sentence, combine, or invent a review, because altering a real testimonial in an ad is deceptive advertising. You may trim a review only at a sentence boundary, marked with an ellipsis. When asking customers for reviews, ask for an honest review; Google and FTC rules prohibit asking only for 5-star reviews or offering anything in exchange.`;
+    const prompt = `Create a social proof content package for Direct Protection Security targeting ${city}, California.
 
-Real DPS testimonials available:
-- Blake C. (Santa Cruz): "Extremely responsive, knowledgeable, easiest team to work with in home security"
-- Jean E. (Santa Clara): "Everything was done as arranged/scheduled — hard to find these days!"
-- Susie Contreras (Burbank): "Never felt pushed into anything. Very pleased with everything!"
-- Grace L. (Oakland): "Will not sell you something you don't need. Great deal!"
-- Nick Johnson (Brentwood): "They were able to set me up the same day. Prices are pretty good."
+REAL DPS REVIEWS (all 5 stars):
+${REVIEWS.map(r=>`- ${r.name} (${r.city}): "${r.text}"`).join("\n")}
 
-Create for ${city}:
-1. FACEBOOK AD using a real testimonial
-2. INSTAGRAM CAPTION (for before/after or product photo post)
+Prefer reviews from ${city} or the nearest cities when there are any.
+
+CREATE FOR ${city.toUpperCase()}:
+1. FACEBOOK AD built around one real review
+2. INSTAGRAM CAPTION (for a before/after or product photo post)
 3. NEXTDOOR SPONSORED POST (neighborhood trust angle)
-4. GOOGLE MY BUSINESS POST (for DPS Santa Cruz or nearest location)
-5. 3 SHORT VIDEO TESTIMONIAL SCRIPTS (15-second UGC-style)
-6. REVIEW REQUEST SMS (to send post-install for getting more 5-star reviews)`;
-
-    try {
-      setOut(await claude(sys, prompt));
-    } catch { setOut("Error — retry."); }
-    setLoading(false);
+4. GOOGLE BUSINESS PROFILE POST (for the nearest DPS office)
+5. 3 SHORT VIDEO SCRIPTS (15 seconds, UGC style, for a real customer or a rep to film; no actors presented as customers)
+6. REVIEW REQUEST TEXT (to send after install, asking for an honest Google review)`;
+    run(sys, prompt);
   };
 
   return (
@@ -1303,8 +1328,7 @@ Create for ${city}:
 const MarketIntel = () => {
   const [topic,  setTopic]  = useState("");
   const [county, setCounty] = useState("Santa Cruz County");
-  const [out, setOut] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { out, loading, run } = useClaude();
 
   const PRESETS = [
     "Best Facebook ad strategies for ADT authorized dealers in California",
@@ -1319,42 +1343,37 @@ const MarketIntel = () => {
     "New mover targeting for ADT — best data sources and platforms",
   ];
 
-  const research = async () => {
+  const research = () => {
     if (!topic) return;
-    setLoading(true); setOut("");
-    const sys = `You are the top competitive intelligence analyst for ADT authorized dealer marketing in California. You specialize in the Central Coast and South Bay markets (Santa Cruz, Monterey, Gilroy, Morgan Hill, Salinas). You have deep knowledge of ad platform performance data, competitor strategies, and what specifically works for DPS-type dealers. Reference the 2025 Facebook benchmark: avg CPL $27.66, CVR 7.72%. Best performing ADT CPL with new mover targeting: $18–24.`;
-    const prompt = `Strategic intelligence brief for Direct Protection Security (DPS/ADT Authorized Dealer):
+    const sys = `You're a competitive-intelligence analyst for home security dealer marketing in California, focused on the Central Coast and South Bay (Santa Cruz, Monterey, Gilroy, Morgan Hill, Salinas). The figures you have: the 2025 Facebook home-services benchmark of $27.66 average CPL and 7.72% conversion rate, and DPS's best ADT CPL with new-mover targeting of $18–24. Beyond those, say what your recommendations rest on, and note where platform rules or ad costs change often enough that DPS should check current numbers before spending.`;
+    const prompt = `Strategic intelligence brief for Direct Protection Security (DPS/ADT Authorized Dealer).
 
 TOPIC: "${topic}"
-FOCUS MARKET: ${county} — also covering Gilroy, Morgan Hill, Salinas
-DPS Context: Top 10 CA ADT dealer, since 2006, offers $850 free equipment, 6-month guarantee, VIDEO LITE $59.99/mo most popular
+FOCUS MARKET: ${county}, also covering Gilroy, Morgan Hill, and Salinas
 
 ━━━ INTEL BRIEF ━━━
 
-## EXECUTIVE SUMMARY (2–3 sentences)
+EXECUTIVE SUMMARY
+(2–3 sentences)
 
-## WHAT'S WINNING RIGHT NOW
-Top 3–5 specific tactics with platform, format, copy angle, and why they work
+WHAT'S WINNING RIGHT NOW
+(Top 3–5 tactics, each with platform, format, copy angle, and why it works)
 
-## COMPETITOR INTEL
-What Vivint, Ring Dealers, Brinks, and SimpliSafe are doing in ${county} — and where DPS has the edge
+COMPETITOR INTEL
+(What Vivint, Ring dealers, Brinks, and SimpliSafe are doing in ${county}, and where DPS has the edge)
 
-## CALIFORNIA-SPECIFIC FACTORS
-Laws, market conditions, or demographics that specifically affect this in CA
+CALIFORNIA-SPECIFIC FACTORS
+(Laws, market conditions, or demographics that affect this in California)
 
-## CPL & PERFORMANCE BENCHMARKS
-Real numbers for this tactic in this market
+CPL & PERFORMANCE BENCHMARKS
+(Expected ranges for this tactic in this market, each labeled with its source: the benchmarks above, or your estimate)
 
-## 3 ACTIONS FOR DPS THIS WEEK
-Specific, implementable steps
+3 ACTIONS FOR DPS THIS WEEK
+(Specific, implementable steps)
 
-## THE CONTRARIAN OPPORTUNITY
-One thing most DPS competitors are NOT doing that represents a clear win`;
-
-    try {
-      setOut(await claude(sys, prompt));
-    } catch { setOut("Error — retry."); }
-    setLoading(false);
+THE CONTRARIAN OPPORTUNITY
+(One thing most competitors aren't doing that would be a clear win for DPS)`;
+    run(sys, prompt, { effort:"high" });
   };
 
   return (
